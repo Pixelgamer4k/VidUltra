@@ -170,12 +170,11 @@ fun SupremeOverlay(
                     .clickable {
                         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
                             type = "video/*"
-                            setPackage("com.google.android.apps.photos") // Target Google Photos specifically
+                            setPackage("com.google.android.apps.photos")
                         }
                         try {
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            // Fallback to default gallery if Google Photos not installed
                             val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
                                 type = "video/*"
                             }
@@ -184,7 +183,45 @@ fun SupremeOverlay(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Text("📷", fontSize = 20.sp)
+                // Draw custom gallery icon
+                Canvas(modifier = Modifier.size(24.dp)) {
+                    val iconSize = size.width
+                    val strokeWidth = 2.dp.toPx()
+                    
+                    // Rounded square border
+                    drawRoundRect(
+                        color = Color.White,
+                        topLeft = Offset(0f, 0f),
+                        size = androidx.compose.ui.geometry.Size(iconSize, iconSize),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()),
+                        style = Stroke(width = strokeWidth)
+                    )
+                    
+                    // Sun/Circle in top left
+                    drawCircle(
+                        color = Color.White,
+                        radius = 2.5.dp.toPx(),
+                        center = Offset(iconSize * 0.25f, iconSize * 0.25f)
+                    )
+                    
+                    // Mountain path (two triangles)
+                    val mountainPath = Path().apply {
+                        // Left mountain
+                        moveTo(0f, iconSize)
+                        lineTo(iconSize * 0.35f, iconSize * 0.5f)
+                        lineTo(iconSize * 0.6f, iconSize)
+                        
+                        // Right mountain
+                        moveTo(iconSize * 0.4f, iconSize)
+                        lineTo(iconSize * 0.75f, iconSize * 0.3f)
+                        lineTo(iconSize, iconSize)
+                    }
+                    drawPath(
+                        path = mountainPath,
+                        color = Color.White,
+                        style = Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                    )
+                }
             }
             CircleIcon("R")
             CircleIcon("S")
