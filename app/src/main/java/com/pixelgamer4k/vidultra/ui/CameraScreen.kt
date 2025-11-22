@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,50 +19,18 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.pixelgamer4k.vidultra.camera.CameraController
-import com.pixelgamer4k.vidultra.camera.VideoRecorder
-import com.pixelgamer4k.vidultra.utils.LogServer
-import kotlinx.coroutines.delay
+import com.pixelgamer4k.vidultra.viewmodel.CameraViewModel
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun CameraScreen() {
-    val context = LocalContext.current
+fun CameraScreen(
+    viewModel: CameraViewModel = viewModel()
+) {
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    val cameraController = remember { CameraController(context) }
-    val videoRecorder = remember { VideoRecorder(context) }
-    val logServer = remember { LogServer() }
-    
-    var surfaceReady by remember { mutableStateOf(false) }
-    var surfaceView: SurfaceView? by remember { mutableStateOf(null) }
-    
-    var isRecording by remember { mutableStateOf(false) }
-    var recordingDuration by remember { mutableStateOf(0L) }
-    var recordingStartTime by remember { mutableStateOf(0L) }
-    
-    // Debug Logs State
-    var debugLogs by remember { mutableStateOf("Logs (Port 9000):\n") }
-    
-    // Connect logger
-    LaunchedEffect(Unit) {
-        logServer.start()
-        logServer.log("App Started")
-        
-        cameraController.onDebugLog = { msg ->
-            debugLogs += "$msg\n"
-            logServer.log(msg)
-        }
-    }
-    
-    DisposableEffect(Unit) {
-        onDispose {
-            logServer.stop()
-        }
-    }
-
     val permissionState = rememberMultiplePermissionsState(
         listOf(
             android.Manifest.permission.CAMERA,
@@ -72,43 +39,20 @@ fun CameraScreen() {
         )
     )
 
-    // Recording duration timer
-    LaunchedEffect(isRecording) {
-        if (isRecording) {
-            recordingStartTime = System.currentTimeMillis()
-            while (isRecording) {
-                recordingDuration = System.currentTimeMillis() - recordingStartTime
-                delay(100)
-            }
-        } else {
-            recordingDuration = 0L
-        }
-    }
-
+    // Lifecycle Observer
     DisposableEffect(lifecycleOwner) {
-        cameraController.startBackgroundThread()
-        
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && permissionState.allPermissionsGranted) {
-                if (surfaceReady && surfaceView != null) {
-                    cameraController.openCamera(surfaceView!!.holder.surface)
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (permissionState.allPermissionsGranted) {
+                    viewModel.onResume()
                 }
             } else if (event == Lifecycle.Event.ON_PAUSE) {
-                if (isRecording) {
-                    // Stop recording
-                    videoRecorder.stopRecording()
-                    cameraController.stopRecordingSession {}
-                    isRecording = false
-                }
-                cameraController.closeCamera()
+                viewModel.onPause()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         
         onDispose {
-            cameraController.closeCamera()
-            cameraController.stopBackgroundThread()
-            videoRecorder.releaseRecorder()
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
@@ -119,15 +63,9 @@ fun CameraScreen() {
             AndroidView(
                 factory = { ctx ->
                     SurfaceView(ctx).apply {
-                        surfaceView = this
                         holder.addCallback(object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
-                                val msg = "Surface Created"
-                                debugLogs += "$msg\n"
-                                logServer.log(msg)
-                                surfaceReady = true
-                                cameraController.startBackgroundThread()
-                                cameraController.openCamera(holder.surface)
+                                viewModel.onSurfaceCreated(holder.surface)
                             }
 
                             override fun surfaceChanged(
@@ -136,21 +74,11 @@ fun CameraScreen() {
                                 width: Int,
                                 height: Int
                             ) {
-                                val msg = "Surface Changed: ${width}x${height}"
-                                debugLogs += "$msg\n"
-                                logServer.log(msg)
+                                // Handle resize if needed
                             }
 
                             override fun surfaceDestroyed(holder: SurfaceHolder) {
-                                val msg = "Surface Destroyed"
-                                debugLogs += "$msg\n"
-                                logServer.log(msg)
-                                surfaceReady = false
-                                if (isRecording) {
-                                    videoRecorder.stopRecording()
-                                    isRecording = false
-                                }
-                                cameraController.closeCamera()
+                                viewModel.onSurfaceDestroyed()
                             }
                         })
                     }
@@ -161,34 +89,17 @@ fun CameraScreen() {
             // Controls Overlay
             ControlsOverlay(
                 modifier = Modifier.fillMaxSize(),
-                isRecording = isRecording,
-                recordingDuration = recordingDuration,
+                isRecording = viewModel.isRecording,
+                recordingDuration = viewModel.recordingDuration,
                 onRecordClick = { shouldRecord ->
                     if (shouldRecord) {
-                        // Start recording
-                        val recordingSurface = videoRecorder.prepareRecording(3840, 2160)
-                        if (recordingSurface != null) {
-                            cameraController.createRecordingSession(recordingSurface) {
-                                // Session ready, now start MediaRecorder
-                                if (videoRecorder.startRecording()) {
-                                    isRecording = true
-                                }
-                            }
-                        } else {
-                            val msg = "Error: Recording surface null"
-                            debugLogs += "$msg\n"
-                            logServer.log(msg)
-                        }
+                        viewModel.startRecording()
                     } else {
-                        // Stop recording
-                        videoRecorder.stopRecording()
-                        cameraController.stopRecordingSession {
-                            isRecording = false
-                        }
+                        viewModel.stopRecording()
                     }
                 },
                 onManualControlsChange = { iso, exposureTime, focus, wb ->
-                    cameraController.updateManualControls(iso, exposureTime, focus, wb)
+                    viewModel.updateManualControls(iso, exposureTime, focus, wb)
                 }
             )
         } else {
@@ -216,11 +127,11 @@ fun CameraScreen() {
                 .fillMaxWidth()
                 .height(200.dp)
                 .background(Color.Black.copy(alpha = 0.5f))
-                .zIndex(100f) // Ensure on top
+                .zIndex(100f)
                 .align(Alignment.TopCenter)
         ) {
             Text(
-                text = debugLogs,
+                text = viewModel.debugLogs,
                 color = Color.White,
                 fontSize = 10.sp,
                 modifier = Modifier
