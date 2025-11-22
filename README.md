@@ -4,8 +4,6 @@
 
 VidUltra is a powerful pro-grade video recording application designed for Android devices, featuring manual camera controls, high-quality video encoding, and a sleek "frosted glass" UI inspired by professional mirrorless cameras.
 
-![VidUltra UI Concept](file:///C:/Users/PixelGamer4k/.gemini/antigravity/brain/db4f921b-cfb6-4d8f-95de-f7baa95ce046/uploaded_image_1763823338136.jpg)
-
 ---
 
 ## ✨ Features
