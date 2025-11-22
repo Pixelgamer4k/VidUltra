@@ -59,7 +59,8 @@ class VideoRecorder(private val context: Context) {
                 recordingSurface = surface
             }
             
-            Log.d(TAG, \"MediaRecorder prepared, surface: ${recordingSurface != null}\")\n            return recordingSurface
+            Log.d(TAG, "MediaRecorder prepared, surface: ${recordingSurface != null}")
+            return recordingSurface
             
         } catch (e: Exception) {
             Log.e(TAG, \"Error preparing recording: \", e)
