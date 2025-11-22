@@ -72,7 +72,10 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             // Supreme UI Overlay
             SupremeOverlay(
                 isRecording = cameraState is Camera2Api.CameraState.Recording,
-                onRecord = { if (it) viewModel.stopRecording() else viewModel.startRecording() }
+                onRecord = { if (it) viewModel.stopRecording() else viewModel.startRecording() },
+                onIsoChange = { viewModel.setIso(it.toInt()) },
+                onShutterChange = { viewModel.setExposure(it.toLong()) },
+                onFocusChange = { viewModel.setFocus(it) }
             )
         } else {
             LaunchedEffect(Unit) { permissionState.launchMultiplePermissionRequest() }
@@ -81,15 +84,28 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
 }
 
 @Composable
-fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
+@Composable
+fun SupremeOverlay(
+    isRecording: Boolean,
+    onRecord: (Boolean) -> Unit,
+    onIsoChange: (Float) -> Unit,
+    onShutterChange: (Float) -> Unit,
+    onFocusChange: (Float) -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    var activeControl by remember { mutableStateOf<String?>(null) }
     
+    // Animation for recording transparency
+    val uiAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isRecording) 0.3f else 1f,
+        label = "uiAlpha"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            // Avoid punch hole / status bars
-            .windowInsetsPadding(WindowInsets.safeDrawing) 
+            .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
         
         // --- LEFT SIDE: Settings & Histogram ---
@@ -97,7 +113,8 @@ fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .width(140.dp)
-                .padding(top = 16.dp), // Extra padding for corner cutouts
+                .padding(top = 16.dp)
+                .alpha(uiAlpha), // Fade out when recording
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Histogram
@@ -127,30 +144,57 @@ fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
         Box(modifier = Modifier.align(Alignment.CenterEnd)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 
-                // Zoom Slider (Mock)
-                Column(
-                    modifier = Modifier
-                        .width(50.dp)
-                        .height(200.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
-                        .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(25.dp))
-                        .padding(vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Dynamic Slider Panel
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = activeControl != null && !isRecording,
+                    enter = fadeIn() + slideInHorizontally { it / 2 },
+                    exit = fadeOut() + slideOutHorizontally { it / 2 }
                 ) {
-                    Text("+", color = Color.White)
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .size(36.dp)
-                            .border(1.dp, Gold, CircleShape),
-                        contentAlignment = Alignment.Center
+                            .width(60.dp)
+                            .height(240.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(30.dp))
+                            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(30.dp))
+                            .padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("1.0", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        val range = when (activeControl) {
+                            "ISO" -> 100f..3200f
+                            "S" -> 100000f..33333333f // 1/10000s to 1/30s in ns
+                            "F" -> 0f..10f
+                            else -> 0f..1f
+                        }
+                        
+                        var sliderValue by remember(activeControl) { mutableFloatStateOf(range.start) }
+                        
+                        Text("+", color = Gold, fontWeight = FontWeight.Bold)
+                        Slider(
+                            value = sliderValue,
+                            onValueChange = { 
+                                sliderValue = it
+                                when (activeControl) {
+                                    "ISO" -> onIsoChange(it)
+                                    "S" -> onShutterChange(it)
+                                    "F" -> onFocusChange(it)
+                                }
+                            },
+                            valueRange = range,
+                            modifier = Modifier
+                                .weight(1f)
+                                .graphicsLayer { rotationZ = 270f } // Vertical Slider
+                                .width(200.dp), // Height becomes width when rotated
+                            colors = SliderDefaults.colors(
+                                thumbColor = Gold,
+                                activeTrackColor = Gold,
+                                inactiveTrackColor = Color.White.copy(0.2f)
+                            )
+                        )
+                        Text("-", color = Gold, fontWeight = FontWeight.Bold)
                     }
-                    Text("-", color = Color.White)
                 }
 
-                // Shutter Button
+                // Shutter Button (Always Visible)
                 Box(
                     modifier = Modifier
                         .size(90.dp)
@@ -163,32 +207,64 @@ fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
             }
         }
 
-        // --- TOP RIGHT: Icons ---
-        Row(
-            modifier = Modifier.align(Alignment.TopEnd),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        // --- TOP RIGHT: Icons & Manual Toggles ---
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .alpha(uiAlpha),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.End
         ) {
-            // Gallery Button
-            CircleIcon("G", onClick = {
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    type = "video/*"
-                }
-                context.startActivity(intent)
-            })
-            CircleIcon("R") // Refresh
-            CircleIcon("S") // Settings
+            // Top Icons
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                CircleIcon("G", onClick = {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        type = "video/*"
+                    }
+                    context.startActivity(intent)
+                })
+                CircleIcon("R")
+                CircleIcon("S")
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Manual Control Toggles
+            ControlToggle("ISO", activeControl == "ISO") { activeControl = if (activeControl == "ISO") null else "ISO" }
+            ControlToggle("S", activeControl == "S") { activeControl = if (activeControl == "S") null else "S" }
+            ControlToggle("F", activeControl == "F") { activeControl = if (activeControl == "F") null else "F" }
         }
 
         // --- BOTTOM RIGHT: Pro Button ---
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
+                .alpha(uiAlpha)
                 .background(Gold, RoundedCornerShape(8.dp))
                 .clickable { /* Open Pro Menu */ }
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Text("PRO", color = Color.Black, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+@Composable
+fun ControlToggle(text: String, isActive: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .background(if (isActive) Gold else Color.Black.copy(alpha = 0.6f), CircleShape)
+            .border(1.dp, if (isActive) Gold else Color.White.copy(0.2f), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text, 
+            color = if (isActive) Color.Black else Color.White, 
+            fontSize = 14.sp, 
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
