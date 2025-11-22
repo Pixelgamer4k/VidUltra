@@ -103,7 +103,7 @@ fun SupremeOverlay(
     val context = androidx.compose.ui.platform.LocalContext.current
     var activeControl by remember { mutableStateOf<String?>(null) }
     
-    // Animation for recording transparency
+    // Animation for recording transparency (only for non-essential UI)
     val uiAlpha by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (isRecording) 0.3f else 1f,
         label = "uiAlpha"
@@ -122,7 +122,7 @@ fun SupremeOverlay(
                 .align(Alignment.TopStart)
                 .width(140.dp)
                 .padding(top = 16.dp)
-                .alpha(uiAlpha), // Fade out when recording
+                .alpha(uiAlpha), // Fade during recording
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Histogram
@@ -141,42 +141,80 @@ fun SupremeOverlay(
             SettingItem(label = "CODEC", value = "HEVC", color = Gold)
             SettingItem(label = "DEPTH", value = "8-bit", color = Color.Green)
             SettingItem(label = "LOG", value = "OFF", color = Color.White)
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Format Indicator
-            Text("4K 30FPS", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
 
-        // --- RIGHT SIDE: Controls ---
-        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                
-                // Dynamic Slider Panel
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = activeControl != null && !isRecording,
-                    enter = fadeIn() + slideInHorizontally { it / 2 },
-                    exit = fadeOut() + slideOutHorizontally { it / 2 }
+        // --- RIGHT SIDE: Shutter Button ---
+        Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(90.dp)
+                    .border(3.dp, Gold, CircleShape)
+                    .padding(6.dp)
+                    .clip(CircleShape)
+                    .background(if (isRecording) RedRec else RedRec.copy(alpha = 0.8f))
+                    .clickable { onRecord(isRecording) }
+            )
+        }
+
+        // --- TOP RIGHT: Icons ---
+        Row(
+            modifier = Modifier.align(Alignment.TopEnd).alpha(uiAlpha),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircleIcon("G", onClick = {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    type = "video/*"
+                }
+                context.startActivity(intent)
+            })
+            CircleIcon("R")
+            CircleIcon("S")
+        }
+
+        // --- BOTTOM: Manual Controls (ALWAYS VISIBLE) ---
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Slider popup (appears above controls)
+                AnimatedVisibility(
+                    visible = activeControl != null,
+                    enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
+                    exit = fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
                 ) {
+                    val range = when (activeControl) {
+                        "ISO" -> 100f..3200f
+                        "S" -> 100000f..33333333f // 1/10000s to 1/30s in ns
+                        "F" -> 0f..10f
+                        else -> 0f..1f
+                    }
+                    
+                    var sliderValue by remember(activeControl) { mutableFloatStateOf(range.start) }
+                    
+                    // Horizontal slider panel
                     Column(
                         modifier = Modifier
-                            .width(60.dp)
-                            .height(240.dp)
-                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(30.dp))
-                            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(30.dp))
-                            .padding(vertical = 16.dp),
+                            .padding(horizontal = 40.dp, vertical = 8.dp)
+                            .fillMaxWidth(0.8f)
+                            .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                            .border(1.dp, Gold, RoundedCornerShape(16.dp))
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val range = when (activeControl) {
-                            "ISO" -> 100f..3200f
-                            "S" -> 100000f..33333333f // 1/10000s to 1/30s in ns
-                            "F" -> 0f..10f
-                            else -> 0f..1f
-                        }
-                        
-                        var sliderValue by remember(activeControl) { mutableFloatStateOf(range.start) }
-                        
-                        Text("+", color = Gold, fontWeight = FontWeight.Bold)
+                        Text(
+                            when (activeControl) {
+                                "ISO" -> "ISO: ${sliderValue.toInt()}"
+                                "S" -> "Shutter: 1/${(1000000000 / sliderValue).toInt()}s"
+                                "F" -> "Focus: ${"%.1f".format(sliderValue)}"
+                                else -> ""
+                            },
+                            color = Gold,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Slider(
                             value = sliderValue,
                             onValueChange = { 
@@ -188,71 +226,51 @@ fun SupremeOverlay(
                                 }
                             },
                             valueRange = range,
-                            modifier = Modifier
-                                .weight(1f)
-                                .graphicsLayer { rotationZ = 270f } // Vertical Slider
-                                .width(200.dp), // Height becomes width when rotated
+                            modifier = Modifier.fillMaxWidth(),
                             colors = SliderDefaults.colors(
                                 thumbColor = Gold,
                                 activeTrackColor = Gold,
-                                inactiveTrackColor = Color.White.copy(0.2f)
+                                inactiveTrackColor = Color.White.copy(0.3f)
                             )
                         )
-                        Text("-", color = Gold, fontWeight = FontWeight.Bold)
                     }
                 }
-
-                // Shutter Button (Always Visible)
-                Box(
+                
+                // Control buttons bar
+                Row(
                     modifier = Modifier
-                        .size(90.dp)
-                        .border(3.dp, Gold, CircleShape)
-                        .padding(6.dp)
-                        .clip(CircleShape)
-                        .background(if (isRecording) RedRec else RedRec.copy(alpha = 0.8f))
-                        .clickable { onRecord(isRecording) }
-                )
-            }
-        }
-
-        // --- TOP RIGHT: Icons & Manual Toggles ---
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .alpha(uiAlpha),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            // Top Icons
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CircleIcon("G", onClick = {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        type = "video/*"
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(0.8f))
+                            )
+                        )
+                        .padding(vertical = 16.dp, horizontal = 40.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ControlToggle("ISO", activeControl == "ISO") { 
+                        activeControl = if (activeControl == "ISO") null else "ISO" 
                     }
-                    context.startActivity(intent)
-                })
-                CircleIcon("R")
-                CircleIcon("S")
+                    ControlToggle("S", activeControl == "S") { 
+                        activeControl = if (activeControl == "S") null else "S" 
+                    }
+                    ControlToggle("F", activeControl == "F") { 
+                        activeControl = if (activeControl == "F") null else "F" 
+                    }
+                    
+                    Spacer(modifier = Modifier.width(32.dp))
+                    
+                    // Format/Mode indicator
+                    Box(
+                        modifier = Modifier
+                            .background(Gold, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text("4K 30FPS", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Manual Control Toggles
-            ControlToggle("ISO", activeControl == "ISO") { activeControl = if (activeControl == "ISO") null else "ISO" }
-            ControlToggle("S", activeControl == "S") { activeControl = if (activeControl == "S") null else "S" }
-            ControlToggle("F", activeControl == "F") { activeControl = if (activeControl == "F") null else "F" }
-        }
-
-        // --- BOTTOM RIGHT: Pro Button ---
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .alpha(uiAlpha)
-                .background(Gold, RoundedCornerShape(8.dp))
-                .clickable { /* Open Pro Menu */ }
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text("PRO", color = Color.Black, fontWeight = FontWeight.Bold)
         }
     }
 }
