@@ -36,6 +36,7 @@ class CameraController(private val context: Context) {
     private var manualMode = false
 
     fun startBackgroundThread() {
+        if (backgroundThread != null) return
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
         backgroundHandler = backgroundThread?.looper?.let { Handler(it) }
     }

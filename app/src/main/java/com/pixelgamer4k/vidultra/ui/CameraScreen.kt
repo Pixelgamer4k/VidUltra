@@ -91,6 +91,7 @@ fun CameraScreen() {
                         holder.addCallback(object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
                                 surfaceReady = true
+                                cameraController.startBackgroundThread()
                                 cameraController.openCamera(holder.surface)
                             }
 
