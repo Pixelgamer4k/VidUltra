@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.pixelgamer4k.vidultra.camera.CameraController
 import com.pixelgamer4k.vidultra.camera.VideoRecorder
+import com.pixelgamer4k.vidultra.utils.LogServer
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -33,6 +35,7 @@ fun CameraScreen() {
     
     val cameraController = remember { CameraController(context) }
     val videoRecorder = remember { VideoRecorder(context) }
+    val logServer = remember { LogServer() }
     
     var surfaceReady by remember { mutableStateOf(false) }
     var surfaceView: SurfaceView? by remember { mutableStateOf(null) }
@@ -42,12 +45,22 @@ fun CameraScreen() {
     var recordingStartTime by remember { mutableStateOf(0L) }
     
     // Debug Logs State
-    var debugLogs by remember { mutableStateOf("Logs:\n") }
+    var debugLogs by remember { mutableStateOf("Logs (Port 9000):\n") }
     
     // Connect logger
     LaunchedEffect(Unit) {
+        logServer.start()
+        logServer.log("App Started")
+        
         cameraController.onDebugLog = { msg ->
             debugLogs += "$msg\n"
+            logServer.log(msg)
+        }
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            logServer.stop()
         }
     }
 
@@ -100,8 +113,8 @@ fun CameraScreen() {
         }
     }
 
-    if (permissionState.allPermissionsGranted) {
-        Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (permissionState.allPermissionsGranted) {
             // Camera Preview
             AndroidView(
                 factory = { ctx ->
@@ -109,7 +122,9 @@ fun CameraScreen() {
                         surfaceView = this
                         holder.addCallback(object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
-                                debugLogs += "Surface Created\n"
+                                val msg = "Surface Created"
+                                debugLogs += "$msg\n"
+                                logServer.log(msg)
                                 surfaceReady = true
                                 cameraController.startBackgroundThread()
                                 cameraController.openCamera(holder.surface)
@@ -121,11 +136,15 @@ fun CameraScreen() {
                                 width: Int,
                                 height: Int
                             ) {
-                                debugLogs += "Surface Changed: ${width}x${height}\n"
+                                val msg = "Surface Changed: ${width}x${height}"
+                                debugLogs += "$msg\n"
+                                logServer.log(msg)
                             }
 
                             override fun surfaceDestroyed(holder: SurfaceHolder) {
-                                debugLogs += "Surface Destroyed\n"
+                                val msg = "Surface Destroyed"
+                                debugLogs += "$msg\n"
+                                logServer.log(msg)
                                 surfaceReady = false
                                 if (isRecording) {
                                     videoRecorder.stopRecording()
@@ -138,26 +157,6 @@ fun CameraScreen() {
                 },
                 modifier = Modifier.fillMaxSize()
             )
-            
-            // Debug Overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .zIndex(10f)
-                    .align(Alignment.TopCenter)
-            ) {
-                Text(
-                    text = debugLogs,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
-                        .verticalScroll(rememberScrollState())
-                )
-            }
             
             // Controls Overlay
             ControlsOverlay(
@@ -176,7 +175,9 @@ fun CameraScreen() {
                                 }
                             }
                         } else {
-                            debugLogs += "Error: Recording surface null\n"
+                            val msg = "Error: Recording surface null"
+                            debugLogs += "$msg\n"
+                            logServer.log(msg)
                         }
                     } else {
                         // Stop recording
@@ -190,10 +191,43 @@ fun CameraScreen() {
                     cameraController.updateManualControls(iso, exposureTime, focus, wb)
                 }
             )
+        } else {
+            // Permission Request UI
+            Column(
+                modifier = Modifier.fillMaxSize().background(Color.Black),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Permissions Required", color = Color.White)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { permissionState.launchMultiplePermissionRequest() }) {
+                    Text("Grant Permissions")
+                }
+            }
+            
+            LaunchedEffect(Unit) {
+                permissionState.launchMultiplePermissionRequest()
+            }
         }
-    } else {
-        LaunchedEffect(Unit) {
-            permissionState.launchMultiplePermissionRequest()
+
+        // Debug Overlay (Always Visible)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(Color.Black.copy(alpha = 0.5f))
+                .zIndex(100f) // Ensure on top
+                .align(Alignment.TopCenter)
+        ) {
+            Text(
+                text = debugLogs,
+                color = Color.White,
+                fontSize = 10.sp,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+                    .verticalScroll(rememberScrollState())
+            )
         }
     }
 }
