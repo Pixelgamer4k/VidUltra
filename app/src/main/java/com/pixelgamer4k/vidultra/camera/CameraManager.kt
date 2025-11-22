@@ -8,18 +8,13 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
-import android.hardware.camera2.params.OutputConfiguration
-import android.hardware.camera2.params.SessionConfiguration
 import android.media.MediaRecorder
-import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
 import android.view.Surface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.io.File
-import java.util.concurrent.Executor
 
 class CameraManager(private val context: Context) {
 
@@ -41,7 +36,7 @@ class CameraManager(private val context: Context) {
 
     fun startBackgroundThread() {
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
-        backgroundHandler = Handler(backgroundThread?.looper)
+        backgroundHandler = backgroundThread?.looper?.let { Handler(it) }
     }
 
     fun stopBackgroundThread() {
@@ -136,26 +131,10 @@ class CameraManager(private val context: Context) {
         if (cameraDevice == null) return
         
         try {
-            closeCamera() // Close preview session to start recording session
-            
-            val recordingSurface = MediaRecorder.getSurface() // This is tricky with MediaRecorder and Camera2. 
-            // Actually, we should initialize MediaRecorder first.
-            
-            mediaRecorder = MediaRecorder()
-            VideoConfig.setupMediaRecorder(mediaRecorder!!, width, height, 30, 100000000) // 100Mbps
-            mediaRecorder?.prepare()
-            
-            val surface = mediaRecorder?.surface
-            // We need the preview surface too. 
-            // This requires passing the preview surface again or storing it.
-            // For simplicity in this snippet, we'll assume we need to re-create the session.
-            // But we don't have the preview surface stored here easily without passing it.
-            // Let's simplify: Just toggle the state for now as a mock, 
-            // because proper Camera2 recording requires a persistent surface or re-creating session with both targets.
-            
+            // For simplicity, just toggle state
+            // Proper implementation would need MediaRecorder setup with output file
             _isRecording.value = true
-            // mediaRecorder?.start() 
-            Log.d(TAG, "Recording started")
+            Log.d(TAG, "Recording started (mock)")
         } catch (e: Exception) {
             Log.e(TAG, "startRecording: ", e)
             _isRecording.value = false
@@ -164,12 +143,23 @@ class CameraManager(private val context: Context) {
 
     fun stopRecording() {
         try {
-            mediaRecorder?.stop()
-            mediaRecorder?.reset()
             _isRecording.value = false
-            Log.d(TAG, "Recording stopped")
-            // Restart preview
+            Log.d(TAG, "Recording stopped (mock)")
         } catch (e: Exception) {
             Log.e(TAG, "stopRecording: ", e)
         }
     }
+
+    fun closeCamera() {
+        captureSession?.close()
+        captureSession = null
+        cameraDevice?.close()
+        cameraDevice = null
+        mediaRecorder?.release()
+        mediaRecorder = null
+    }
+
+    companion object {
+        private const val TAG = "CameraManager"
+    }
+}

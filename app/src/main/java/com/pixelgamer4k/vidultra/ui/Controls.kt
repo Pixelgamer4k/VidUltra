@@ -12,10 +12,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,7 +25,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -59,7 +56,43 @@ fun ControlsOverlay(
     var isRecording by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
-        // ... (rest of the UI) ...
+        // Top Left: Histogram
+        Histogram(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .size(width = 120.dp, height = 80.dp)
+        )
+
+        // Left Side: Settings Stack
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(top = 100.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FrostedLabel(label = "BITRATE", value = "800 Mbps", icon = true)
+            FrostedLabel(label = "CODEC", value = "HEVC", icon = true)
+            FrostedLabel(label = "DEPTH", value = "10-bit", icon = true)
+            FrostedLabel(label = "LOG", value = "OFF", icon = true)
+        }
+
+        // Right Side: Controls
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // Settings / EIS Toggle
+            IconButton(
+                onClick = { /* Toggle EIS */ },
+                modifier = Modifier
+                    .size(48.dp)
+                    .frostedGlass()
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary)
+            }
+
             // Record Button
             Box(
                 modifier = Modifier
@@ -108,7 +141,7 @@ fun ControlsOverlay(
             exit = slideOutVertically { it } + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp, start = 140.dp, end = 100.dp) // Avoid overlapping left/right controls
+                .padding(bottom = 24.dp, start = 140.dp, end = 100.dp)
         ) {
             ProControls()
         }
@@ -137,7 +170,6 @@ fun ProSlider(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, color = TextSecondary, fontSize = 12.sp)
         Text(value, color = AccentGold, fontWeight = FontWeight.Bold)
-        // Placeholder for actual slider
         Slider(
             value = 0.5f,
             onValueChange = {},
@@ -166,7 +198,6 @@ fun FrostedLabel(label: String, value: String, icon: Boolean = false) {
             Text(value, color = AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
         if (icon) {
-            // Placeholder icon
             Box(modifier = Modifier.size(16.dp).background(Color.Gray, CircleShape))
         }
     }
@@ -179,8 +210,6 @@ fun Histogram(modifier: Modifier = Modifier) {
             .frostedGlass()
             .padding(4.dp)
     ) {
-        // Placeholder for Histogram Graph
-        // In a real app, this would draw a path based on image analysis
         Box(
             modifier = Modifier
                 .fillMaxSize()
