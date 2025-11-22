@@ -190,190 +190,170 @@ fun SupremeOverlay(
             CircleIcon("S")
         }
 
-        // --- BOTTOM: Manual Controls (ALWAYS VISIBLE) ---
-        Box(
+        // --- BOTTOM CENTER: Slider/Picker Popup ---
+        AnimatedVisibility(
+            visible = activeControl != null,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp),
+            enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + 
+                    androidx.compose.animation.slideInVertically(
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                        )
+                    ) { it / 2 } +
+                    androidx.compose.animation.scaleIn(
+                        initialScale = 0.8f,
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                        )
+                    ),
+            exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) + 
+                   androidx.compose.animation.slideOutVertically { it / 2 } +
+                   androidx.compose.animation.scaleOut(targetScale = 0.8f)
+        ) {
+            when (activeControl) {
+                "ISO" -> {
+                    // ISO Slider (starts at current auto value)
+                    var sliderValue by remember { mutableFloatStateOf(400f) }
+                    
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 40.dp)
+                            .fillMaxWidth(0.8f)
+                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("ISO: ${sliderValue.toInt()}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Slider(
+                            value = sliderValue,
+                            onValueChange = { 
+                                sliderValue = it
+                                onIsoChange(it)
+                            },
+                            valueRange = 100f..3200f,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = SliderDefaults.colors(
+                                thumbColor = Gold,
+                                activeTrackColor = Gold,
+                                inactiveTrackColor = Color.White.copy(0.3f)
+                            )
+                        )
+                    }
+                }
+                "S" -> {
+                    // Shutter Speed Picker
+                    val shutterSpeeds = listOf(
+                        "1/30", "1/60", "1/125", "1/250", "1/500", "1/1000", "1/2000", "1/4000", "1/8000"
+                    )
+                    var selectedIndex by remember { mutableStateOf(2) }
+                    
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 40.dp)
+                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Shutter Speed", color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(Color.White.copy(0.1f), CircleShape)
+                                    .clickable { 
+                                        if (selectedIndex > 0) {
+                                            selectedIndex--
+                                            val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
+                                            onShutterChange(1000000000f / speed)
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("◄", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.width(32.dp))
+                            Text("${shutterSpeeds[selectedIndex]}s", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(32.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(Color.White.copy(0.1f), CircleShape)
+                                    .clickable { 
+                                        if (selectedIndex < shutterSpeeds.size - 1) {
+                                            selectedIndex++
+                                            val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
+                                            onShutterChange(1000000000f / speed)
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("►", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                "F" -> {
+                    // Focus Slider
+                    var sliderValue by remember { mutableFloatStateOf(5f) }
+                    
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 40.dp)
+                            .fillMaxWidth(0.8f)
+                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Focus: ${"%.1f".format(sliderValue)}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Slider(
+                            value = sliderValue,
+                            onValueChange = { 
+                                sliderValue = it
+                                onFocusChange(it)
+                            },
+                            valueRange = 0f..10f,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = SliderDefaults.colors(
+                                thumbColor = Gold,
+                                activeTrackColor = Gold,
+                                inactiveTrackColor = Color.White.copy(0.3f)
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        
+        // --- BOTTOM CENTER: Control Dock (Truly Centered) ---
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                .padding(vertical = 6.dp, horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Slider/Picker popup (appears above controls with animation)
-                AnimatedVisibility(
-                    visible = activeControl != null,
-                    enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + 
-                            androidx.compose.animation.slideInVertically(
-                                animationSpec = androidx.compose.animation.core.spring(
-                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                    stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-                                )
-                            ) { it / 2 } +
-                            androidx.compose.animation.scaleIn(
-                                initialScale = 0.8f,
-                                animationSpec = androidx.compose.animation.core.spring(
-                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                    stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-                                )
-                            ),
-                    exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) + 
-                           androidx.compose.animation.slideOutVertically { it / 2 } +
-                           androidx.compose.animation.scaleOut(targetScale = 0.8f)
-                ) {
-                    when (activeControl) {
-                        "ISO" -> {
-                            // ISO Slider (starts at current auto value)
-                            var sliderValue by remember { mutableFloatStateOf(400f) } // TODO: Get from camera state
-                            
-                            Column(
-                                modifier = Modifier
-                                    .padding(horizontal = 40.dp, vertical = 8.dp)
-                                    .fillMaxWidth(0.8f)
-                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                                    .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                                    .padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("ISO: ${sliderValue.toInt()}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Slider(
-                                    value = sliderValue,
-                                    onValueChange = { 
-                                        sliderValue = it
-                                        onIsoChange(it)
-                                    },
-                                    valueRange = 100f..3200f,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = Gold,
-                                        activeTrackColor = Gold,
-                                        inactiveTrackColor = Color.White.copy(0.3f)
-                                    )
-                                )
-                            }
-                        }
-                        "S" -> {
-                            // Shutter Speed Picker (arrows instead of slider)
-                            val shutterSpeeds = listOf(
-                                "1/30", "1/60", "1/125", "1/250", "1/500", "1/1000", "1/2000", "1/4000", "1/8000"
-                            )
-                            var selectedIndex by remember { mutableStateOf(2) } // Default 1/125
-                            
-                            Column(
-                                modifier = Modifier
-                                    .padding(horizontal = 40.dp, vertical = 8.dp)
-                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                                    .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                                    .padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("Shutter Speed", color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    // Down Arrow
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .background(Color.White.copy(0.1f), CircleShape)
-                                            .clickable { 
-                                                if (selectedIndex > 0) {
-                                                    selectedIndex--
-                                                    // Convert to nanoseconds and send
-                                                    val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
-                                                    onShutterChange(1000000000f / speed)
-                                                }
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("◄", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.width(32.dp))
-                                    
-                                    // Current Value
-                                    Text(
-                                        "${shutterSpeeds[selectedIndex]}s",
-                                        color = Color.White,
-                                        fontSize = 28.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.width(32.dp))
-                                    
-                                    // Up Arrow
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .background(Color.White.copy(0.1f), CircleShape)
-                                            .clickable { 
-                                                if (selectedIndex < shutterSpeeds.size - 1) {
-                                                    selectedIndex++
-                                                    val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
-                                                    onShutterChange(1000000000f / speed)
-                                                }
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("►", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-                        "F" -> {
-                            // Focus Slider
-                            var sliderValue by remember { mutableFloatStateOf(5f) }
-                            
-                            Column(
-                                modifier = Modifier
-                                    .padding(horizontal = 40.dp, vertical = 8.dp)
-                                    .fillMaxWidth(0.8f)
-                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                                    .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                                    .padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("Focus: ${"%.1f".format(sliderValue)}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Slider(
-                                    value = sliderValue,
-                                    onValueChange = { 
-                                        sliderValue = it
-                                        onFocusChange(it)
-                                    },
-                                    valueRange = 0f..10f,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = Gold,
-                                        activeTrackColor = Gold,
-                                        inactiveTrackColor = Color.White.copy(0.3f)
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                // Ultra-compact control dock (only ISO, S, F) - Centered
-                Row(
-                    modifier = Modifier
-                        .padding(bottom = 8.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                        .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
-                        .padding(vertical = 6.dp, horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ControlToggle("ISO", activeControl == "ISO", size = 36.dp) { 
-                        activeControl = if (activeControl == "ISO") null else "ISO" 
-                    }
-                    ControlToggle("S", activeControl == "S", size = 36.dp) { 
-                        activeControl = if (activeControl == "S") null else "S" 
-                    }
-                    ControlToggle("F", activeControl == "F", size = 36.dp) { 
-                        activeControl = if (activeControl == "F") null else "F" 
-                    }
-                }
+            ControlToggle("ISO", activeControl == "ISO", size = 36.dp) { 
+                activeControl = if (activeControl == "ISO") null else "ISO" 
+            }
+            ControlToggle("S", activeControl == "S", size = 36.dp) { 
+                activeControl = if (activeControl == "S") null else "S" 
+            }
+            ControlToggle("F", activeControl == "F", size = 36.dp) { 
+                activeControl = if (activeControl == "F") null else "F" 
             }
         }
         
