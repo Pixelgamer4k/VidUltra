@@ -82,19 +82,31 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
 
 @Composable
 fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            // Avoid punch hole / status bars
+            .windowInsetsPadding(WindowInsets.safeDrawing) 
+    ) {
         
         // --- LEFT SIDE: Settings & Histogram ---
         Column(
-            modifier = Modifier.align(Alignment.TopStart).width(120.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .width(140.dp)
+                .padding(top = 16.dp), // Extra padding for corner cutouts
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Histogram
             Box(
                 modifier = Modifier
-                    .size(120.dp, 80.dp)
-                    .background(DarkPanel, RoundedCornerShape(8.dp))
-                    .border(1.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .size(140.dp, 80.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                    .border(1.dp, Gold, RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(12.dp))
             ) {
                 HistogramGraph()
             }
@@ -119,8 +131,9 @@ fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
                 Column(
                     modifier = Modifier
                         .width(50.dp)
-                        .height(180.dp)
-                        .background(DarkPanel, RoundedCornerShape(25.dp))
+                        .height(200.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
+                        .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(25.dp))
                         .padding(vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
@@ -128,11 +141,11 @@ fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
                     Text("+", color = Color.White)
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
-                            .border(1.dp, Color.White, CircleShape),
+                            .size(36.dp)
+                            .border(1.dp, Gold, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("1.0", color = Color.White, fontSize = 10.sp)
+                        Text("1.0", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     Text("-", color = Color.White)
                 }
@@ -155,7 +168,13 @@ fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
             modifier = Modifier.align(Alignment.TopEnd),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            CircleIcon("G") // Gallery
+            // Gallery Button
+            CircleIcon("G", onClick = {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    type = "video/*"
+                }
+                context.startActivity(intent)
+            })
             CircleIcon("R") // Refresh
             CircleIcon("S") // Settings
         }
@@ -165,6 +184,7 @@ fun SupremeOverlay(isRecording: Boolean, onRecord: (Boolean) -> Unit) {
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .background(Gold, RoundedCornerShape(8.dp))
+                .clickable { /* Open Pro Menu */ }
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Text("PRO", color = Color.Black, fontWeight = FontWeight.Bold)
@@ -177,24 +197,26 @@ fun SettingItem(label: String, value: String, color: Color) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkPanel, RoundedCornerShape(4.dp))
-            .padding(8.dp)
+            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+            .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Text(label, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
-        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }
 
 @Composable
-fun CircleIcon(text: String) {
+fun CircleIcon(text: String, onClick: () -> Unit = {}) {
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .background(DarkPanel, CircleShape)
-            .border(1.dp, Color.White.copy(0.3f), CircleShape),
+            .size(44.dp)
+            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+            .border(1.dp, Color.White.copy(0.2f), CircleShape)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = Color.White, fontSize = 12.sp)
+        Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }
 
