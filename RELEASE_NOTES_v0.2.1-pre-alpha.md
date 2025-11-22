@@ -112,7 +112,54 @@ VidUltra v0.2.1-pre-alpha is the first public pre-alpha release featuring a prof
 
 ## 🐛 Known Issues
 
-- None reported in this build
+### Confirmed Issues
+- **None** - All development issues have been resolved in this build
+
+### Untested Areas ⚠️
+
+**This pre-alpha has not been tested on physical hardware.** The following areas may have undiscovered issues:
+
+#### Camera Compatibility
+- **Camera2 API Support**: Not all devices fully support Camera2 API manual controls
+  - Some budget/older devices may have limited manual control capabilities
+  - ISO and shutter speed ranges may vary by device
+- **HEVC Encoding**: Not all devices support HEVC (H.265) codec
+  - App may crash or fail to record on devices without HEVC support
+  - Fallback codec handling not yet implemented
+
+#### Platform Compatibility
+- **Android Version Testing**: Only tested in emulator
+  - MediaStore behavior may differ across Android 8-14
+  - Scoped storage handling (Android 10+) untested on real devices
+- **Device Variations**: UI layout not tested on:
+  - Different screen sizes and aspect ratios
+  - Various punch-hole/notch configurations
+  - Tablets or foldable devices
+
+#### Performance
+- **4K Recording Performance**: Real-world performance unknown
+  - Frame drops during recording possible on lower-end devices
+  - Overheating during extended recording untested
+  - Battery consumption during recording not measured
+- **Manual Control Latency**: UI responsiveness during recording untested
+  - ISO/shutter changes may have delay on some devices
+
+#### Functionality
+- **Gallery Integration**: MediaStore saving untested
+  - Videos may not appear in gallery immediately on some devices
+  - Google Photos integration not verified on real hardware
+- **Permission Handling**: Camera/audio permission flow not tested on various Android versions
+- **Edge Cases**: No testing for:
+  - Low storage scenarios
+  - Camera in use by another app
+  - App backgrounding during recording
+
+### Reporting Issues
+
+If you encounter any bugs or issues while testing:
+1. Check device compatibility (Camera2 API support, HEVC encoding)
+2. Note your device model, Android version, and exact steps to reproduce
+3. Report on GitHub Issues with logcat output if available
 
 ---
 
