@@ -58,7 +58,7 @@ VidUltra is a powerful pro-grade video recording application designed for Androi
 4. Install the APK on your device
 
 ### Build from Source
-Since you don't have Android Studio, use **GitHub Actions** to build:
+Use **GitHub Actions** to build:
 
 1. **Fork or Clone** this repository
 2. **Push changes** to trigger the build workflow
