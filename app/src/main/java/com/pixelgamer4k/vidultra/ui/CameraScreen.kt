@@ -12,7 +12,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.pixelgamer4k.vidultra.camera.CameraManager
+import com.pixelgamer4k.vidultra.camera.CameraController
+import com.pixelgamer4k.vidultra.camera.VideoRecorder
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -21,18 +22,21 @@ fun CameraScreen() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    val cameraManager = remember { CameraManager(context) }
+    val cameraController = remember { CameraController(context) }
+    val videoRecorder = remember { VideoRecorder(context) }
+    
     var surfaceReady by remember { mutableStateOf(false) }
     var surfaceView: SurfaceView? by remember { mutableStateOf(null) }
     
-    val isRecording by cameraManager.isRecording.collectAsState()
+    var isRecording by remember { mutableStateOf(false) }
     var recordingDuration by remember { mutableStateOf(0L) }
     var recordingStartTime by remember { mutableStateOf(0L) }
 
     val permissionState = rememberMultiplePermissionsState(
         listOf(
             android.Manifest.permission.CAMERA,
-            android.Manifest.permission.RECORD_AUDIO
+            android.Manifest.permission.RECORD_AUDIO,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
     )
 
@@ -42,7 +46,7 @@ fun CameraScreen() {
             recordingStartTime = System.currentTimeMillis()
             while (isRecording) {
                 recordingDuration = System.currentTimeMillis() - recordingStartTime
-                delay(100) // Update every 100ms
+                delay(100)
             }
         } else {
             recordingDuration = 0L
@@ -50,25 +54,29 @@ fun CameraScreen() {
     }
 
     DisposableEffect(lifecycleOwner) {
-        cameraManager.startBackgroundThread()
+        cameraController.startBackgroundThread()
         
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME && permissionState.allPermissionsGranted) {
                 if (surfaceReady && surfaceView != null) {
-                    cameraManager.openCamera(surfaceView!!.holder.surface, 3840, 2160)
+                    cameraController.openCamera(surfaceView!!.holder.surface)
                 }
             } else if (event == Lifecycle.Event.ON_PAUSE) {
                 if (isRecording) {
-                    cameraManager.stopRecording()
+                    // Stop recording
+                    videoRecorder.stopRecording()
+                    cameraController.stopRecordingSession {}
+                    isRecording = false
                 }
-                cameraManager.closeCamera()
+                cameraController.closeCamera()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         
         onDispose {
-            cameraManager.closeCamera()
-            cameraManager.stopBackgroundThread()
+            cameraController.closeCamera()
+            cameraController.stopBackgroundThread()
+            videoRecorder.releaseRecorder()
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
@@ -83,7 +91,7 @@ fun CameraScreen() {
                         holder.addCallback(object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
                                 surfaceReady = true
-                                cameraManager.openCamera(holder.surface, 3840, 2160)
+                                cameraController.openCamera(holder.surface)
                             }
 
                             override fun surfaceChanged(
@@ -95,7 +103,11 @@ fun CameraScreen() {
 
                             override fun surfaceDestroyed(holder: SurfaceHolder) {
                                 surfaceReady = false
-                                cameraManager.closeCamera()
+                                if (isRecording) {
+                                    videoRecorder.stopRecording()
+                                    isRecording = false
+                                }
+                                cameraController.closeCamera()
                             }
                         })
                     }
@@ -110,13 +122,26 @@ fun CameraScreen() {
                 recordingDuration = recordingDuration,
                 onRecordClick = { shouldRecord ->
                     if (shouldRecord) {
-                        cameraManager.startRecording(3840, 2160)
+                        // Start recording
+                        val recordingSurface = videoRecorder.prepareRecording(3840, 2160)
+                        if (recordingSurface != null) {
+                            cameraController.createRecordingSession(recordingSurface) {
+                                // Session ready, now start MediaRecorder
+                                if (videoRecorder.startRecording()) {
+                                    isRecording = true
+                                }
+                            }
+                        }
                     } else {
-                        cameraManager.stopRecording()
+                        // Stop recording
+                        videoRecorder.stopRecording()
+                        cameraController.stopRecordingSession {
+                            isRecording = false
+                        }
                     }
                 },
                 onManualControlsChange = { iso, exposureTime, focus, wb ->
-                    cameraManager.updateManualControls(iso, exposureTime, focus, wb)
+                    cameraController.updateManualControls(iso, exposureTime, focus, wb)
                 }
             )
         }
