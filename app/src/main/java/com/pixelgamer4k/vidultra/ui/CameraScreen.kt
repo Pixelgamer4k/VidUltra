@@ -60,9 +60,9 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 factory = { ctx ->
                     SurfaceView(ctx).apply {
                         holder.addCallback(object : SurfaceHolder.Callback {
-                            override fun surfaceCreated(h: SurfaceHolder) = viewModel.onSurfaceReady(h.surface)
-                            override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, h: Int) {}
-                            override fun surfaceDestroyed(h: SurfaceHolder) = viewModel.onSurfaceDestroyed()
+                            override fun surfaceCreated(holder: SurfaceHolder) = viewModel.onSurfaceReady(holder.surface)
+                            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+                            override fun surfaceDestroyed(holder: SurfaceHolder) = viewModel.onSurfaceDestroyed()
                         })
                     }
                 },
