@@ -354,40 +354,39 @@ fun SupremeOverlay(
                     }
                 }
                 
-                // Compact frosted glass control bar
+                // Ultra-compact control dock (only ISO, S, F)
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp, vertical = 12.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                        .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
-                        .padding(vertical = 10.dp, horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                        .padding(bottom = 8.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                        .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                        .padding(vertical = 6.dp, horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ControlToggle("ISO", activeControl == "ISO", size = 40.dp) { 
+                    ControlToggle("ISO", activeControl == "ISO", size = 36.dp) { 
                         activeControl = if (activeControl == "ISO") null else "ISO" 
                     }
-                    ControlToggle("S", activeControl == "S", size = 40.dp) { 
+                    ControlToggle("S", activeControl == "S", size = 36.dp) { 
                         activeControl = if (activeControl == "S") null else "S" 
                     }
-                    ControlToggle("F", activeControl == "F", size = 40.dp) { 
+                    ControlToggle("F", activeControl == "F", size = 36.dp) { 
                         activeControl = if (activeControl == "F") null else "F" 
-                    }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    // Format indicator
-                    Box(
-                        modifier = Modifier
-                            .background(Gold, RoundedCornerShape(10.dp))
-                            .border(1.dp, Color.Black.copy(0.2f), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
-                    ) {
-                        Text("4K 30", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
             }
+        }
+        
+        // --- BOTTOM RIGHT: Format Indicator (Separate from dock) ---
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp)
+                .background(Gold, RoundedCornerShape(10.dp))
+                .border(1.dp, Color.Black.copy(0.2f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 12.dp, vertical = 5.dp)
+        ) {
+            Text("4K 30", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 10.sp)
         }
     }
 }
