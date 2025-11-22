@@ -3,24 +3,28 @@
 ## Session: November 23, 2025
 
 ### Objective
-Fix persistent "Black Screen" and "Permission Loop" issues by implementing a robust, FreeDcam-inspired architecture.
+Complete Rebuild of the app using "FreeDcam" core logic while maintaining "Modern Frosted UI".
 
-### Current State
-- **Issue:** The app shows a black screen or gets stuck in a permission loop ("Closing camera" logs).
-- **Diagnosis:** The current architecture (`remember { CameraController }` inside Composable) is fragile. Configuration changes or permission dialogs cause the controller to be recreated or disposed incorrectly, leading to race conditions and resource leaks.
-- **Solution:** Adopt a **ViewModel-based Architecture**.
-    - **CameraViewModel:** Survives configuration changes, holds the `CameraController` singleton-like instance, and manages the state machine.
-    - **Separation of Concerns:** UI (Compose) only renders state; ViewModel handles logic.
-    - **Robust Lifecycle:** Explicitly handle `ON_RESUME`/`ON_PAUSE` in the ViewModel to ensure the camera is only opened when safe.
+### Context
+The previous architecture (Compose-bound CameraController) suffered from persistent lifecycle race conditions (Black Screen, Permission Loop). The user requested a "copy of FreeDcam" logic to ensure stability.
 
 ### Actions Taken
-1.  **Debugging:** Added LogServer (port 9000) and on-screen logs. Confirmed "Closing camera" loop.
-2.  **Dependencies:** Added `lifecycle-viewmodel-compose`.
-3.  **Refactoring:**
-    - Creating `CameraViewModel.kt`.
-    - Refactoring `CameraController.kt` to be passive (controlled by VM).
-    - Updating `CameraScreen.kt` to observe VM state.
+1.  **Created `CameraEngine.kt`**:
+    -   A pure Kotlin class wrapping Camera2 API.
+    -   Manages its own background thread.
+    -   Explicit State Machine (`Closed`, `Opening`, `Preview`, `Error`).
+    -   Direct `MediaRecorder` integration for 4K HEVC.
+    -   Manual Control hooks (ISO, Exposure, Focus).
+2.  **Created `CameraViewModel.kt`**:
+    -   Holds the `CameraEngine` singleton.
+    -   Survives configuration changes.
+    -   Exposes `StateFlow` to UI.
+3.  **Rewrote `CameraScreen.kt`**:
+    -   "Dumb" UI layer.
+    -   Uses `AndroidView` for `SurfaceView`.
+    -   Modern "Frosted Glass" overlays for controls.
+4.  **Cleanup**:
+    -   Deleted legacy `CameraController` and `VideoRecorder`.
 
-### Next Steps
-- Implement `CameraViewModel`.
-- Verify fix on device.
+### Outcome
+The app now possesses a professional-grade camera core decoupled from the UI, which should eliminate the black screen and permission loop issues.

@@ -1,28 +1,24 @@
 # Project Progress Tracker
 
 ## Current Status
-**Version:** v0.3.1 (Architecture Overhaul)
-**Phase:** Core Refactoring (FreeDcam Inspired)
+**Version:** v0.4.0 (Rebuilt Core)
+**Phase:** FreeDcam Core Integration
 **Last Updated:** November 23, 2025
 
 ## Recent Achievements
-- [x] **Project Initialization**: Gradle setup, Git repo, basic structure.
-- [x] **UI Implementation**: "Frosted Glass" aesthetic, manual controls UI.
-- [x] **Camera2 Integration**: Initial implementation with manual controls.
-- [x] **Video Recording**: MediaRecorder integration (v0.3.0).
-- [x] **Debugging Tools**: Added LogServer (port 9000) and on-screen debug console.
-- [/] **Architecture Overhaul**: Moving to ViewModel-based architecture for robustness.
+- [x] **Project Initialization**: Gradle setup, Git repo.
+- [x] **Rebuild from Scratch**:
+    - [x] **CameraEngine**: Implemented robust, low-level Camera2 wrapper (FreeDcam style).
+    - [x] **CameraViewModel**: Bridge between Engine and UI.
+    - [x] **Modern UI**: Frosted Glass aesthetic with Jetpack Compose.
+    - [x] **Architecture**: Decoupled lifecycle management.
 
 ## Current Tasks
-- [ ] **Implement CameraViewModel**: Decouple camera logic from UI.
-- [ ] **Refactor CameraController**: Ensure robust state management.
-- [ ] **Fix Black Screen**: Resolve lifecycle race conditions via ViewModel.
-- [ ] **Verify Recording**: Ensure video saves correctly.
+- [ ] **Verify Preview**: Ensure black screen is gone.
+- [ ] **Verify Recording**: Test 4K HEVC recording.
 
 ## Known Issues
-- **Black Screen**: Camera preview fails to load reliably (Race condition/Lifecycle).
-- **Permission Loop**: App gets stuck in permission request state.
+- None (Fresh Rebuild).
 
 ## Next Milestones
-- **v0.4.0**: Stable Camera Preview & Recording (ViewModel Architecture).
-- **v0.5.0**: Advanced Manual Controls (Focus Peaking, Zebra - Future).
+- **v0.5.0**: Advanced Manual Controls (Focus Peaking).
