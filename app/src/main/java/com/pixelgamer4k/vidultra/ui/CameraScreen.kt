@@ -354,10 +354,10 @@ fun SupremeOverlay(
                     }
                 }
                 
-                // Ultra-compact control dock (only ISO, S, F)
+                // Ultra-compact control dock (only ISO, S, F) - Centered
                 Row(
                     modifier = Modifier
-                        .padding(bottom = 8.dp, start = 160.dp) // Offset to right to avoid left panel
+                        .padding(bottom = 8.dp)
                         .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                         .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
                         .padding(vertical = 6.dp, horizontal = 12.dp),
