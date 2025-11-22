@@ -1,6 +1,4 @@
-package com.pixel
-
-gamer4k.vidultra.ui
+package com.pixelgamer4k.vidultra.ui
 
 import android.view.SurfaceHolder
 import android.view.SurfaceView

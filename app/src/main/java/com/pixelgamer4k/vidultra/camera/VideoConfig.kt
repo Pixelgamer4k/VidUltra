@@ -1,5 +1,8 @@
+package com.pixelgamer4k.vidultra.camera
+
+import android.media.MediaRecorder
+
 object VideoConfig {
-    private const val TAG = "VideoConfig"
 
     enum class Codec(val displayName: String, val encoderName: String, val fileExtension: String) {
         H264("H.264", "h264", "h264"),
