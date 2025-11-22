@@ -161,12 +161,31 @@ fun SupremeOverlay(
             modifier = Modifier.align(Alignment.TopEnd).alpha(uiAlpha),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            CircleIcon("G", onClick = {
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    type = "video/*"
-                }
-                context.startActivity(intent)
-            })
+            // Gallery Icon (opens Google Photos)
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                    .border(1.dp, Color.White.copy(0.2f), CircleShape)
+                    .clickable {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                            type = "video/*"
+                            setPackage("com.google.android.apps.photos") // Target Google Photos specifically
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Fallback to default gallery if Google Photos not installed
+                            val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                type = "video/*"
+                            }
+                            context.startActivity(fallbackIntent)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("📷", fontSize = 20.sp)
+            }
             CircleIcon("R")
             CircleIcon("S")
         }
@@ -178,7 +197,7 @@ fun SupremeOverlay(
                 .fillMaxWidth()
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Slider popup (appears above controls with animation)
+                // Slider/Picker popup (appears above controls with animation)
                 AnimatedVisibility(
                     visible = activeControl != null,
                     enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + 
@@ -199,89 +218,173 @@ fun SupremeOverlay(
                            androidx.compose.animation.slideOutVertically { it / 2 } +
                            androidx.compose.animation.scaleOut(targetScale = 0.8f)
                 ) {
-                    val range = when (activeControl) {
-                        "ISO" -> 100f..3200f
-                        "S" -> 100000f..33333333f
-                        "F" -> 0f..10f
-                        else -> 0f..1f
-                    }
-                    
-                    var sliderValue by remember(activeControl) { mutableFloatStateOf(range.start) }
-                    
-                    // Frosted glass slider panel
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 40.dp, vertical = 8.dp)
-                            .fillMaxWidth(0.8f)
-                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            when (activeControl) {
-                                "ISO" -> "ISO: ${sliderValue.toInt()}"
-                                "S" -> "Shutter: 1/${(1000000000 / sliderValue).toInt()}s"
-                                "F" -> "Focus: ${"%.1f".format(sliderValue)}"
-                                else -> ""
-                            },
-                            color = Gold,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Slider(
-                            value = sliderValue,
-                            onValueChange = { 
-                                sliderValue = it
-                                when (activeControl) {
-                                    "ISO" -> onIsoChange(it)
-                                    "S" -> onShutterChange(it)
-                                    "F" -> onFocusChange(it)
-                                }
-                            },
-                            valueRange = range,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Gold,
-                                activeTrackColor = Gold,
-                                inactiveTrackColor = Color.White.copy(0.3f)
+                    when (activeControl) {
+                        "ISO" -> {
+                            // ISO Slider (starts at current auto value)
+                            var sliderValue by remember { mutableFloatStateOf(400f) } // TODO: Get from camera state
+                            
+                            Column(
+                                modifier = Modifier
+                                    .padding(horizontal = 40.dp, vertical = 8.dp)
+                                    .fillMaxWidth(0.8f)
+                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                                    .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("ISO: ${sliderValue.toInt()}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Slider(
+                                    value = sliderValue,
+                                    onValueChange = { 
+                                        sliderValue = it
+                                        onIsoChange(it)
+                                    },
+                                    valueRange = 100f..3200f,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = Gold,
+                                        activeTrackColor = Gold,
+                                        inactiveTrackColor = Color.White.copy(0.3f)
+                                    )
+                                )
+                            }
+                        }
+                        "S" -> {
+                            // Shutter Speed Picker (arrows instead of slider)
+                            val shutterSpeeds = listOf(
+                                "1/30", "1/60", "1/125", "1/250", "1/500", "1/1000", "1/2000", "1/4000", "1/8000"
                             )
-                        )
+                            var selectedIndex by remember { mutableStateOf(2) } // Default 1/125
+                            
+                            Column(
+                                modifier = Modifier
+                                    .padding(horizontal = 40.dp, vertical = 8.dp)
+                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                                    .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Shutter Speed", color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    // Down Arrow
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(Color.White.copy(0.1f), CircleShape)
+                                            .clickable { 
+                                                if (selectedIndex > 0) {
+                                                    selectedIndex--
+                                                    // Convert to nanoseconds and send
+                                                    val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
+                                                    onShutterChange(1000000000f / speed)
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("◄", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(32.dp))
+                                    
+                                    // Current Value
+                                    Text(
+                                        "${shutterSpeeds[selectedIndex]}s",
+                                        color = Color.White,
+                                        fontSize = 28.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(32.dp))
+                                    
+                                    // Up Arrow
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(Color.White.copy(0.1f), CircleShape)
+                                            .clickable { 
+                                                if (selectedIndex < shutterSpeeds.size - 1) {
+                                                    selectedIndex++
+                                                    val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
+                                                    onShutterChange(1000000000f / speed)
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("►", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                        "F" -> {
+                            // Focus Slider
+                            var sliderValue by remember { mutableFloatStateOf(5f) }
+                            
+                            Column(
+                                modifier = Modifier
+                                    .padding(horizontal = 40.dp, vertical = 8.dp)
+                                    .fillMaxWidth(0.8f)
+                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                                    .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Focus: ${"%.1f".format(sliderValue)}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Slider(
+                                    value = sliderValue,
+                                    onValueChange = { 
+                                        sliderValue = it
+                                        onFocusChange(it)
+                                    },
+                                    valueRange = 0f..10f,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = Gold,
+                                        activeTrackColor = Gold,
+                                        inactiveTrackColor = Color.White.copy(0.3f)
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
                 
-                // Frosted glass control bar (no gradient shadow)
+                // Compact frosted glass control bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 20.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(32.dp))
-                        .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(32.dp))
-                        .padding(vertical = 16.dp, horizontal = 24.dp),
+                        .padding(horizontal = 32.dp, vertical = 12.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                        .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+                        .padding(vertical = 10.dp, horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ControlToggle("ISO", activeControl == "ISO") { 
+                    ControlToggle("ISO", activeControl == "ISO", size = 40.dp) { 
                         activeControl = if (activeControl == "ISO") null else "ISO" 
                     }
-                    ControlToggle("S", activeControl == "S") { 
+                    ControlToggle("S", activeControl == "S", size = 40.dp) { 
                         activeControl = if (activeControl == "S") null else "S" 
                     }
-                    ControlToggle("F", activeControl == "F") { 
+                    ControlToggle("F", activeControl == "F", size = 40.dp) { 
                         activeControl = if (activeControl == "F") null else "F" 
                     }
                     
-                    Spacer(modifier = Modifier.width(32.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
                     
-                    // Format/Mode indicator
+                    // Format indicator
                     Box(
                         modifier = Modifier
-                            .background(Gold, RoundedCornerShape(12.dp))
-                            .border(1.dp, Color.Black.copy(0.2f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 20.dp, vertical = 10.dp)
+                            .background(Gold, RoundedCornerShape(10.dp))
+                            .border(1.dp, Color.Black.copy(0.2f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
                     ) {
-                        Text("4K 30FPS", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("4K 30", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
             }
@@ -290,10 +393,10 @@ fun SupremeOverlay(
 }
 
 @Composable
-fun ControlToggle(text: String, isActive: Boolean, onClick: () -> Unit) {
+fun ControlToggle(text: String, isActive: Boolean, size: androidx.compose.ui.unit.Dp = 44.dp, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(size)
             .background(if (isActive) Gold else Color.Black.copy(alpha = 0.6f), CircleShape)
             .border(1.dp, if (isActive) Gold else Color.White.copy(0.2f), CircleShape)
             .clickable(onClick = onClick),
@@ -302,7 +405,7 @@ fun ControlToggle(text: String, isActive: Boolean, onClick: () -> Unit) {
         Text(
             text, 
             color = if (isActive) Color.Black else Color.White, 
-            fontSize = 14.sp, 
+            fontSize = (size.value * 0.32).sp,
             fontWeight = FontWeight.Bold
         )
     }
