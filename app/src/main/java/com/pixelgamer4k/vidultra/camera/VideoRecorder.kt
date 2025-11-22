@@ -63,7 +63,7 @@ class VideoRecorder(private val context: Context) {
             return recordingSurface
             
         } catch (e: Exception) {
-            Log.e(TAG, \"Error preparing recording: \", e)
+            Log.e(TAG, "Error preparing recording: ", e)
             e.printStackTrace()
             releaseRecorder()
             return null
@@ -77,10 +77,10 @@ class VideoRecorder(private val context: Context) {
     fun startRecording(): Boolean {
         return try {
             mediaRecorder?.start()
-            Log.d(TAG, \"Recording started\")
+            Log.d(TAG, "Recording started")
             true
         } catch (e: Exception) {
-            Log.e(TAG, \"Error starting recording: \", e)
+            Log.e(TAG, "Error starting recording: ", e)
             e.printStackTrace()
             false
         }
@@ -92,19 +92,19 @@ class VideoRecorder(private val context: Context) {
     fun stopRecording(): File? {
         return try {
             mediaRecorder?.stop()
-            Log.d(TAG, \"Recording stopped\")
+            Log.d(TAG, "Recording stopped")
             
             // Add to MediaStore
             currentVideoFile?.let {
                 FileManager.addVideoToMediaStore(context, it)
-                Log.d(TAG, \"Video saved: ${it.absolutePath}\")
+                Log.d(TAG, "Video saved: ${it.absolutePath}")
             }
             
             releaseRecorder()
             currentVideoFile
             
         } catch (e: Exception) {
-            Log.e(TAG, \"Error stopping recording: \", e)
+            Log.e(TAG, "Error stopping recording: ", e)
             e.printStackTrace()
             releaseRecorder()
             null
@@ -119,7 +119,7 @@ class VideoRecorder(private val context: Context) {
             mediaRecorder?.reset()
             mediaRecorder?.release()
         } catch (e: Exception) {
-            Log.e(TAG, \"Error releasing recorder: \", e)
+            Log.e(TAG, "Error releasing recorder: ", e)
         } finally {
             mediaRecorder = null
             recordingSurface = null
@@ -129,6 +129,6 @@ class VideoRecorder(private val context: Context) {
     fun isReady(): Boolean = recordingSurface != null
     
     companion object {
-        private const val TAG = \"VideoRecorder\"
+        private const val TAG = "VideoRecorder"
     }
 }
