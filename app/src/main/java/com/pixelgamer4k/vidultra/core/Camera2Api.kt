@@ -218,13 +218,25 @@ class Camera2Api(private val context: Context) {
         if (mediaRecorder == null) mediaRecorder = MediaRecorder()
         else mediaRecorder?.reset()
         
-        val file = getVideoFile()
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Video.Media.DISPLAY_NAME, "VID_${System.currentTimeMillis()}.mp4")
+            put(android.provider.MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                put(android.provider.MediaStore.Video.Media.RELATIVE_PATH, "DCIM/VidUltra")
+            }
+        }
+        
+        val uri = context.contentResolver.insert(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+            ?: throw Exception("Failed to create MediaStore entry")
+            
+        val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "rw")?.fileDescriptor
+            ?: throw Exception("Failed to open file descriptor")
         
         mediaRecorder?.apply {
             setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setOutputFile(file.absolutePath)
+            setOutputFile(fileDescriptor)
             setVideoEncodingBitRate(100_000_000)
             setVideoFrameRate(30)
             setVideoSize(3840, 2160)
@@ -233,13 +245,6 @@ class Camera2Api(private val context: Context) {
             prepare()
             recorderSurface = surface
         }
-    }
-
-    private fun getVideoFile(): File {
-        val dir = File(context.getExternalFilesDir(null), "VidUltra")
-        if (!dir.exists()) dir.mkdirs()
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        return File(dir, "VID_$timestamp.mp4")
     }
 
     private fun closePreviewSession() {
