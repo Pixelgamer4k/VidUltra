@@ -1,19 +1,18 @@
 # Project Progress Tracker
 
 ## Current Status
-**Version:** v0.5.0 (Nuclear Rebuild)
-**Phase:** FreeDcam Core Integration
+**Version:** v0.5.1 (Wrapper Restored)
+**Phase:** Verification
 **Last Updated:** November 23, 2025
 
 ## Recent Achievements
-- [x] **Nuclear Rebuild**: Wiped old codebase and rebuilt from scratch.
-- [x] **Core Engine**: Implemented `Camera2Api` (FreeDcam clone).
-- [x] **Modern UI**: Implemented Frosted Glass UI in Compose.
-- [x] **Architecture**: Clean MVVM with robust State Machine.
+- [x] **Nuclear Rebuild**: Fresh start with FreeDcam core.
+- [x] **Resources**: Added icons, strings, themes.
+- [x] **Wrapper**: Restored `gradlew` and wrapper files.
 
 ## Current Tasks
+- [ ] **Verify Build**: Run `./gradlew assembleDebug`.
 - [ ] **Verify Preview**: Ensure black screen is gone.
-- [ ] **Verify Recording**: Test 4K HEVC recording.
 
 ## Next Milestones
-- **v0.6.0**: Advanced Manual Controls (Focus Peaking).
+- **v0.6.0**: Advanced Manual Controls.
