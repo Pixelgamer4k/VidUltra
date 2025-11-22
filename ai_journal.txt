@@ -592,8 +592,39 @@ Time: 00:10 - 00:40 IST (Next Day)
     - Updated task.md to mark completed features
 
 
+
+
+[PHASE 11: v0.2.1 - CAMERA2 FIXES]
+-----------------------------------
+Time: 00:35 IST
+
+23. User Bug Reports
+    - Live preview working but showing bluish tint
+    - Video recording not working at all
+    - Manual controls (ISO, Focus, WB) not effective
+    - User suggested using FreeDcam as reference
+
+24. Camera2 Implementation Fixes
+    - Added COLOR_CORRECTION_MODE_HIGH_QUALITY (fixes blue tint)
+    - Implemented proper CONTROL_MODE switching (AUTO vs OFF)
+    - Added manual mode flag to track control state
+    - Fixed AE_MODE, AF_MODE, AWB_MODE configuration
+    - Implemented device-aware clamping:
+      * ISO: Query SENSOR_INFO_SENSITIVITY_RANGE
+      * Exposure: Query SENSOR_INFO_EXPOSURE_TIME_RANGE
+      * Focus: Query LENS_INFO_MINIMUM_FOCUS_DISTANCE
+    - Added camera capability logging for debugging
+    - Fixed MediaRecorder session creation:
+      * Proper session closure before creating new session
+      * Dual-surface configuration (preview + recording)
+      * Correct TEMPLATE_RECORD usage
+    - Set EDGE_MODE_OFF for zero sharpening
+    - Set NOISE_REDUCTION_MODE_MINIMAL for clean output
+    - Fixed manual control application in capture requests
+
+
 ==========================================================================================
 Last Updated: November 23, 2025 00:40 IST
-Project Status: ✅ v0.2.0-alpha COMPLETE - TESTING PHASE
-Next Milestone: Build verification and device testing
+Project Status: ✅ v0.2.1 - Camera2 Fixes Applied
+Next Milestone: Device testing and validation
 ==========================================
