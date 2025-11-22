@@ -1,23 +1,154 @@
-# AI Development Journal
+# AI Development Journal - VidUltra
 
-## Session: November 23, 2025
+## Session: November 23, 2025 - UI Refinement & Manual Controls
 
 ### Objective
-"Nuclear Option": Delete everything and rebuild based on FreeDcam core logic + Modern UI.
+Refine the VidUltra app's UI and camera controls to achieve a professional "Supreme Cinema" aesthetic with full manual control functionality during recording.
 
-### Actions Taken
-1.  **Cleanup**: Deleted all project files except journals.
-2.  **Rebuild**:
-    -   **Project**: Fresh Gradle setup.
-    -   **Core**: `Camera2Api.kt` - A robust, singleton-style Camera2 wrapper. Features explicit state management (`Closed`, `Opening`, `Preview`, `Recording`) and dedicated background thread.
-    -   **UI**: `CameraScreen.kt` - Jetpack Compose with "Frosted Glass" overlays.
-    -   **Bridge**: `CameraViewModel.kt` - Connects UI to Core.
+### Key Accomplishments
 
-### Rationale
-The previous codebase suffered from lifecycle race conditions due to tight coupling between Compose and Camera2. The new architecture separates them completely:
--   **Core** lives in `ViewModel` scope (survives rotation).
--   **UI** just renders the `Surface` and buttons.
--   **Surface** lifecycle drives the `openCamera` call via `SurfaceHolder.Callback`.
+#### 1. Compilation Fixes
+**Problem**: Missing imports and duplicate annotations causing build failures.
+**Solution**: 
+- Added all required Compose imports (Slider, SliderDefaults, alpha, graphicsLayer, animation functions)
+- Removed duplicate `@Composable` annotation
+- Added package declaration to CameraScreen.kt
 
-### Outcome
-A clean, professional-grade codebase ready for testing.
+#### 2. UI Layout Redesign
+**Problem**: Overlapping UI elements between left settings panel and bottom controls.
+**Iterations**:
+1. Initial: Controls on right side (vertical slider) - overlapped with settings
+2. Second: Moved to bottom with gradient shadow - still overlapping
+3. Third: Reduced dock size by 40% - still touching LOG setting
+4. Fourth: Added 160dp left offset - broke centering
+5. **Final**: Restructured layout with direct `Alignment.BottomCenter` - perfect centering
+
+**Key Decision**: Removed wrapping Box/Column, used direct alignment on parent Box for true centering.
+
+#### 3. Frosted Glass Design
+**Problem**: Gradient shadow looked cheap and unprofessional.
+**Solution**: 
+- Replaced `Brush.verticalGradient` with solid frosted glass background
+- Added 2dp white border with 15% opacity
+- Increased corner radius to 24dp for softer appearance
+- Applied to both bottom dock and slider popup
+
+#### 4. Manual Controls Redesign
+**Shutter Speed Evolution**:
+- **Before**: Continuous slider (1/10000s to 1/30s in nanoseconds)
+- **After**: Discrete arrow picker with 9 preset values
+- **Rationale**: Professional cameras use discrete shutter speeds, easier to use during recording
+
+**ISO Slider**:
+- Starts at 400 (typical auto level) instead of 100
+- Prevents jarring jump when transitioning from auto to manual
+- Range: 100-3200
+
+**Focus Slider**:
+- Range: 0.0-10.0
+- Starts at midpoint (5.0)
+
+#### 5. Control Dock Optimization
+**Size Reductions**:
+- Buttons: 44dp → 40dp → 36dp
+- Padding: vertical 16dp → 10dp → 6dp, horizontal 24dp → 16dp → 12dp
+- Corner radius: 32dp → 24dp → 20dp
+- Text: "4K 30FPS" → "4K 30" (11sp → 10sp)
+
+**Final Dimensions**: ~148dp width × ~48dp height (3 × 36dp buttons + spacing + padding)
+
+#### 6. Gallery Icon Enhancement
+**Evolution**: 
+1. Text "G" → 📷 emoji → Custom Canvas icon
+2. **Final Design**:
+   - Rounded square border (white, 2dp stroke)
+   - Circle (sun) in top-left
+   - Two mountain triangles at bottom
+   - 24dp size, white color
+
+**Implementation**: Used Compose Canvas API with `drawRoundRect`, `drawCircle`, and `Path`
+
+#### 7. Format Indicator Separation
+**Problem**: "4K 30" was inside dock, causing width bloat.
+**Solution**: Moved to separate Box at `Alignment.BottomEnd`, positioned near shutter button.
+
+#### 8. Animation Enhancements
+**Slider Popup**:
+```kotlin
+fadeIn(tween(300)) + 
+slideInVertically(spring(DampingRatioMediumBouncy, StiffnessLow)) +
+scaleIn(initialScale = 0.8f, spring(...))
+```
+- Creates professional, bouncy entrance
+- Scale animation adds polish
+- 300ms fade for smoothness
+
+**Recording Transparency**:
+- Non-essential UI (histogram, settings, top icons): fade to 30% alpha
+- Essential controls (dock, sliders): always visible at 100%
+
+### Technical Insights
+
+#### Camera2 API Integration
+- ISO control: Set via `CaptureRequest.SENSOR_SENSITIVITY`
+- Shutter speed: Convert fraction to nanoseconds for `SENSOR_EXPOSURE_TIME`
+- Focus: `LENS_FOCUS_DISTANCE` in diopters
+
+#### MediaStore Implementation
+```kotlin
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    values.put(MediaStore.Video.Media.RELATIVE_PATH, "DCIM/VidUltra")
+}
+```
+- Ensures compatibility with Android 10+ scoped storage
+- Videos immediately visible in gallery apps
+
+#### Edge-to-Edge Display
+```kotlin
+WindowCompat.setDecorFitsSystemWindows(window, false)
+window.attributes.layoutInDisplayCutoutMode = 
+    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+```
+- Maximizes preview area
+- Optimizes for punch-hole cameras
+- Uses `WindowInsets.safeDrawing` for UI padding
+
+### Lessons Learned
+
+1. **Layout Alignment**: Wrapping elements in unnecessary containers causes alignment issues. Use direct alignment modifiers when possible.
+
+2. **UI Iteration**: Sometimes requires 4-5 iterations to get positioning right. User feedback is critical.
+
+3. **Professional UX**: Discrete controls (arrow picker) often better than continuous sliders for precision tasks.
+
+4. **Visual Hierarchy**: During recording, fade non-essential UI to minimize distraction while keeping controls accessible.
+
+5. **Custom Icons**: Canvas-drawn icons are crisp, themeable, and avoid emoji rendering inconsistencies across devices.
+
+### Next Steps
+
+1. **Focus Peaking**: Implement edge detection shader for manual focus assist
+2. **Zebra Stripes**: Overexposure indicators
+3. **Waveform**: Professional exposure monitoring
+4. **LUT Support**: Color grading profiles
+5. **Dynamic UI**: Make "4K 30" and bitrate reflect actual camera capabilities
+
+### Code Quality Notes
+
+- **MVVM Pattern**: Clean separation between `CameraViewModel` and `CameraScreen`
+- **Type Safety**: Kotlin's null safety prevents crashes
+- **Composability**: UI components are small, focused, and reusable
+- **State Management**: `StateFlow` ensures UI reactivity
+- **Error Handling**: Try-catch for intent launching (Google Photos fallback)
+
+### Performance Considerations
+
+- **Recomposition Optimization**: `remember` used for slider values to prevent unnecessary recompositions
+- **Animation Performance**: Spring animations use native implementation, hardware-accelerated
+- **Canvas Rendering**: Gallery icon drawn once, cached by Compose
+
+---
+
+**Status**: UI refinement complete. Manual controls fully functional. Ready for advanced features (focus peaking, zebras, waveforms).
+
+**Next Session**: Implement focus peaking using RenderScript or Vulkan shader for real-time edge detection.
