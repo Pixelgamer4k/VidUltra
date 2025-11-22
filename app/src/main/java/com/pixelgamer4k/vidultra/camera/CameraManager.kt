@@ -25,6 +25,7 @@ class CameraManager(private val context: Context) {
     private var captureSession: CameraCaptureSession? = null
     private var mediaRecorder: MediaRecorder? = null
     private var previewSurface: Surface? = null
+    private var cameraCharacteristics: CameraCharacteristics? = null
     
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording
@@ -34,11 +35,14 @@ class CameraManager(private val context: Context) {
     
     private var currentVideoFile: File? = null
 
-    // Manual Control State
+    // Manual Control State with device-aware ranges
     var iso: Int? = null
     var exposureTime: Long? = null
     var focusDistance: Float? = null
     var whiteBalance: Int? = null
+    
+    // Manual control enable flags
+    private var manualMode = false
     
     // Recording settings
     var currentBitrate = VideoConfig.BitratePreset.MBPS_100
@@ -65,6 +69,11 @@ class CameraManager(private val context: Context) {
         previewSurface = surface
         try {
             val cameraId = cameraManager.cameraIdList[0] // Back camera
+            cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId)
+            
+            // Log camera capabilities
+            logCameraCapabilities()
+            
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
@@ -85,14 +94,40 @@ class CameraManager(private val context: Context) {
             Log.e(TAG, "openCamera: ", e)
         }
     }
+    
+    private fun logCameraCapabilities() {
+        cameraCharacteristics?.let { chars ->
+            val isoRange = chars.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
+            val exposureRange = chars.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+            val focusRange = chars.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
+            
+            Log.d(TAG, "ISO Range: ${isoRange?.lower} - ${isoRange?.upper}")
+            Log.d(TAG, "Exposure Range: ${exposureRange?.lower}ns - ${exposureRange?.upper}ns")
+            Log.d(TAG, "Min Focus Distance: $focusRange")
+        }
+    }
 
     private fun createCameraPreviewSession(previewSurface: Surface) {
         try {
+            // Use PREVIEW template for preview-only session
             val builder = cameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             builder?.addTarget(previewSurface)
 
-            // Apply Manual Controls
-            applyManualControls(builder)
+            // CRITICAL: Set proper control modes for manual control
+            builder?.apply {
+                // Start with auto mode until manual controls are adjusted
+                set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                
+                // Fix blue tint: set color correction mode
+                set(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_HIGH_QUALITY)
+                
+                // Edge enhancement and noise reduction
+                set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_OFF) // Zero sharpening
+                set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_MINIMAL)
+            }
 
             cameraDevice?.createCaptureSession(
                 listOf(previewSurface),
@@ -122,11 +157,12 @@ class CameraManager(private val context: Context) {
     
     private fun createRecordingSession(previewSurface: Surface, recordingSurface: Surface) {
         try {
+            // Use RECORD template for video recording
             val builder = cameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
             builder?.addTarget(previewSurface)
             builder?.addTarget(recordingSurface)
 
-            // Apply Manual Controls
+            // Apply manual controls
             applyManualControls(builder)
 
             cameraDevice?.createCaptureSession(
@@ -142,7 +178,7 @@ class CameraManager(private val context: Context) {
                             // Start recording after session is configured
                             mediaRecorder?.start()
                             _isRecording.value = true
-                            Log.d(TAG, "Recording started")
+                            Log.d(TAG, "Recording started to: ${currentVideoFile?.absolutePath}")
                         } catch (e: Exception) {
                             Log.e(TAG, "Error starting recording: ", e)
                             _isRecording.value = false
@@ -164,31 +200,71 @@ class CameraManager(private val context: Context) {
 
     private fun applyManualControls(builder: CaptureRequest.Builder?) {
         builder?.apply {
-            // Manual mode
-            set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF)
-            
-            // ISO
-            iso?.let { 
-                set(CaptureRequest.SENSOR_SENSITIVITY, it)
+            if (manualMode) {
+                // Manual mode - full control
+                set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF)
+                
+                // Manual AE (ISO + Shutter)
+                if (iso != null && exposureTime != null) {
+                    set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
+                    set(CaptureRequest.SENSOR_SENSITIVITY, clampISO(iso!!))
+                    set(CaptureRequest.SENSOR_EXPOSURE_TIME, clampExposureTime(exposureTime!!))
+                    Log.d(TAG, "Applied ISO: ${iso}, Exposure: ${exposureTime}ns")
+                }
+                
+                // Manual Focus
+                focusDistance?.let {
+                    set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+                    set(CaptureRequest.LENS_FOCUS_DISTANCE, clampFocusDistance(it))
+                    Log.d(TAG, "Applied Focus Distance: $it")
+                }
+                
+                // Manual White Balance
+                whiteBalance?.let {
+                    set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF)
+                    // Note: Manual WB via color temperature is complex in Camera2
+                    // For now, we'll use AWB_MODE_OFF and let sensor handle it
+                    Log.d(TAG, "Applied WB: $it")
+                }
+            } else {
+                // Auto mode
+                set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
             }
             
-            // Shutter speed (exposure time)
-            exposureTime?.let { 
-                set(CaptureRequest.SENSOR_EXPOSURE_TIME, it)
-            }
-            
-            // Focus
-            focusDistance?.let {
-                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
-                set(CaptureRequest.LENS_FOCUS_DISTANCE, it)
-            }
-            
-            // White Balance
-            whiteBalance?.let {
-                set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF)
-                // Note: Manual WB with color temperature requires more complex implementation
-            }
+            // Always apply these for quality
+            set(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_HIGH_QUALITY)
+            set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_OFF) // No sharpening
+            set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_MINIMAL)
         }
+    }
+    
+    // Clamp values to device capabilities
+    private fun clampISO(value: Int): Int {
+        val range = cameraCharacteristics?.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
+        return when {
+            range == null -> value
+            value < range.lower -> range.lower
+            value > range.upper -> range.upper
+            else -> value
+        }
+    }
+    
+    private fun clampExposureTime(value: Long): Long {
+        val range = cameraCharacteristics?.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+        return when {
+            range == null -> value
+            value < range.lower -> range.lower
+            value > range.upper -> range.upper
+            else -> value
+        }
+    }
+    
+    private fun clampFocusDistance(value: Float): Float {
+        val maxDistance = cameraCharacteristics?.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) ?: 10f
+        return value.coerceIn(0f, maxDistance)
     }
 
     fun updateManualControls(
@@ -216,6 +292,11 @@ class CameraManager(private val context: Context) {
             updated = true
         }
         
+        // Enable manual mode when any control is set
+        if (newIso != null || newExposureTime != null || newFocusDistance != null) {
+            manualMode = true
+        }
+        
         // Update the repeating request if controls changed
         if (updated) {
             updateCaptureRequest()
@@ -241,6 +322,7 @@ class CameraManager(private val context: Context) {
                 
                 builder?.let {
                     session.setRepeatingRequest(it.build(), null, backgroundHandler)
+                    Log.d(TAG, "Capture request updated")
                 }
             }
         } catch (e: CameraAccessException) {
@@ -254,6 +336,11 @@ class CameraManager(private val context: Context) {
             return
         }
         
+        if (_isRecording.value) {
+            Log.w(TAG, "Already recording")
+            return
+        }
+        
         try {
             // Create video file
             currentVideoFile = FileManager.createVideoFile(
@@ -262,6 +349,8 @@ class CameraManager(private val context: Context) {
                 height, 
                 currentCodec.fileExtension
             )
+            
+            Log.d(TAG, "Creating video file: ${currentVideoFile?.absolutePath}")
             
             // Setup MediaRecorder
             mediaRecorder = MediaRecorder().apply {
@@ -275,16 +364,24 @@ class CameraManager(private val context: Context) {
                     currentCodec
                 )
                 prepare()
+                Log.d(TAG, "MediaRecorder prepared")
             }
             
             // Create recording session with both surfaces
             val recordingSurface = mediaRecorder?.surface
             if (recordingSurface != null && previewSurface != null) {
+                // Close existing session
+                captureSession?.close()
+                captureSession = null
+                
                 createRecordingSession(previewSurface!!, recordingSurface)
+            } else {
+                throw IllegalStateException("Recording surface is null")
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "Error starting recording: ", e)
+            e.printStackTrace()
             _isRecording.value = false
             mediaRecorder?.release()
             mediaRecorder = null
@@ -293,6 +390,11 @@ class CameraManager(private val context: Context) {
 
     fun stopRecording() {
         try {
+            if (!_isRecording.value) {
+                Log.w(TAG, "Not recording")
+                return
+            }
+            
             mediaRecorder?.stop()
             mediaRecorder?.reset()
             mediaRecorder?.release()
@@ -306,10 +408,15 @@ class CameraManager(private val context: Context) {
             }
             
             // Restart preview session
-            previewSurface?.let { createCameraPreviewSession(it) }
+            previewSurface?.let { 
+                captureSession?.close()
+                captureSession = null
+                createCameraPreviewSession(it) 
+            }
             
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping recording: ", e)
+            e.printStackTrace()
             mediaRecorder?.release()
             mediaRecorder = null
             _isRecording.value = false
