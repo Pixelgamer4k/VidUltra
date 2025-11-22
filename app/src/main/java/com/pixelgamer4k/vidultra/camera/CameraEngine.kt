@@ -2,7 +2,12 @@ package com.pixelgamer4k.vidultra.camera
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.hardware.camera2.*
+import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraDevice
+import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CameraMetadata
+import android.hardware.camera2.CaptureRequest
 import android.media.MediaRecorder
 import android.os.Handler
 import android.os.HandlerThread
@@ -10,7 +15,6 @@ import android.util.Log
 import android.util.Range
 import android.view.Surface
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.text.SimpleDateFormat
@@ -23,7 +27,7 @@ import java.util.Locale
  */
 class CameraEngine(private val context: Context) {
 
-    private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    private val cameraManager: CameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     
     // State
     private val _cameraState = MutableStateFlow<CameraState>(CameraState.Closed)
@@ -140,11 +144,12 @@ class CameraEngine(private val context: Context) {
 
     private fun getBestCameraId(): String? {
         return try {
-            cameraManager.cameraIdList.firstOrNull { id ->
+            val ids = cameraManager.cameraIdList
+            ids.firstOrNull { id ->
                 val chars = cameraManager.getCameraCharacteristics(id)
                 val facing = chars.get(CameraCharacteristics.LENS_FACING)
                 facing == CameraCharacteristics.LENS_FACING_BACK
-            } ?: cameraManager.cameraIdList.firstOrNull()
+            } ?: ids.firstOrNull()
         } catch (e: Exception) {
             null
         }
