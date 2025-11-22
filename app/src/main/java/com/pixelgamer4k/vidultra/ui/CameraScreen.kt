@@ -1,69 +1,102 @@
-package com.pixelgamer4k.vidultra.ui
+package com.pixel
 
-import android.Manifest
+gamer4k.vidultra.ui
+
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.pixelgamer4k.vidultra.camera.CameraManager
-import com.pixelgamer4k.vidultra.ui.theme.Black
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun CameraScreen() {
     val context = LocalContext.current
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
     val cameraManager = remember { CameraManager(context) }
+    var surfaceReady by remember { mutableStateOf(false) }
+    var surfaceView: SurfaceView? by remember { mutableStateOf(null) }
+    
+    val isRecording by cameraManager.isRecording.collectAsState()
+    var recordingDuration by remember { mutableStateOf(0L) }
+    var recordingStartTime by remember { mutableStateOf(0L) }
 
-    LaunchedEffect(Unit) {
-        if (!cameraPermissionState.status.isGranted) {
-            cameraPermissionState.launchPermissionRequest()
+    val permissionState = rememberMultiplePermissionsState(
+        listOf(
+            android.Manifest.permission.CAMERA,
+            android.Manifest.permission.RECORD_AUDIO
+        )
+    )
+
+    // Recording duration timer
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingStartTime = System.currentTimeMillis()
+            while (isRecording) {
+                recordingDuration = System.currentTimeMillis() - recordingStartTime
+                delay(100) // Update every 100ms
+            }
+        } else {
+            recordingDuration = 0L
         }
+    }
+
+    DisposableEffect(lifecycleOwner) {
         cameraManager.startBackgroundThread()
-    }
-
-    DisposableEffect(Unit) {
+        
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && permissionState.allPermissionsGranted) {
+                if (surfaceReady && surfaceView != null) {
+                    cameraManager.openCamera(surfaceView!!.holder.surface, 3840, 2160)
+                }
+            } else if (event == Lifecycle.Event.ON_PAUSE) {
+                if (isRecording) {
+                    cameraManager.stopRecording()
+                }
+                cameraManager.closeCamera()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        
         onDispose {
-            cameraManager.stopBackgroundThread()
             cameraManager.closeCamera()
+            cameraManager.stopBackgroundThread()
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Black)
-    ) {
-        if (cameraPermissionState.status.isGranted) {
+    if (permissionState.allPermissionsGranted) {
+        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+            // Camera Preview
             AndroidView(
                 factory = { ctx ->
                     SurfaceView(ctx).apply {
+                        surfaceView = this
                         holder.addCallback(object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
-                                cameraManager.openCamera(holder.surface, width, height)
+                                surfaceReady = true
+                                cameraManager.openCamera(holder.surface, 3840, 2160)
                             }
 
-                            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                                // Handle resize if needed
-                            }
+                            override fun surfaceChanged(
+                                holder: SurfaceHolder,
+                                format: Int,
+                                width: Int,
+                                height: Int
+                            ) {}
 
                             override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                surfaceReady = false
                                 cameraManager.closeCamera()
                             }
                         })
@@ -71,26 +104,27 @@ fun CameraScreen() {
                 },
                 modifier = Modifier.fillMaxSize()
             )
-        } else {
-            Text(
-                text = "Camera Permission Required",
-                color = Color.White,
-                modifier = Modifier.align(Alignment.Center)
+            
+            // Controls Overlay
+            ControlsOverlay(
+                modifier = Modifier.fillMaxSize(),
+                isRecording = isRecording,
+                recordingDuration = recordingDuration,
+                onRecordClick = { shouldRecord ->
+                    if (shouldRecord) {
+                        cameraManager.startRecording(3840, 2160)
+                    } else {
+                        cameraManager.stopRecording()
+                    }
+                },
+                onManualControlsChange = { iso, exposureTime, focus, wb ->
+                    cameraManager.updateManualControls(iso, exposureTime, focus, wb)
+                }
             )
         }
-
-        // UI Overlay
-        ControlsOverlay(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            onRecordClick = { isRecording ->
-                if (isRecording) {
-                    cameraManager.startRecording(1920, 1080) // Placeholder resolution
-                } else {
-                    cameraManager.stopRecording()
-                }
-            }
-        )
+    } else {
+        LaunchedEffect(Unit) {
+            permissionState.launchMultiplePermissionRequest()
+        }
     }
 }

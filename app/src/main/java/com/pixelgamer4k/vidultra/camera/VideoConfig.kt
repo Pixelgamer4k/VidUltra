@@ -1,39 +1,53 @@
-package com.pixelgamer4k.vidultra.camera
-
-import android.media.MediaRecorder
-import android.os.Build
-import android.util.Log
-
 object VideoConfig {
     private const val TAG = "VideoConfig"
 
-    fun setupMediaRecorder(recorder: MediaRecorder, width: Int, height: Int, fps: Int, bitrate: Int) {
+    enum class Codec(val displayName: String, val encoderName: String, val fileExtension: String) {
+        H264("H.264", "h264", "h264"),
+        H265("HEVC (H.265)", "h265", "h265")
+    }
+
+    enum class BitratePreset(val displayName: String, val bitsPerSecond: Int) {
+        MBPS_50("50 Mbps", 50_000_000),
+        MBPS_100("100 Mbps", 100_000_000),
+        MBPS_200("200 Mbps", 200_000_000),
+        MBPS_400("400 Mbps", 400_000_000),
+        MBPS_800("800 Mbps", 800_000_000)
+    }
+
+    fun setupMediaRecorder(
+        recorder: MediaRecorder,
+        outputFile: String,
+        width: Int,
+        height: Int,
+        fps: Int,
+        bitrate: Int,
+        codec: Codec = Codec.H265
+    ) {
         recorder.apply {
             setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             
-            // HEVC (H.265)
-            setVideoEncoder(MediaRecorder.VideoEncoder.HEVC)
+            // Set video encoder based on codec selection
+            when (codec) {
+                Codec.H265 -> setVideoEncoder(MediaRecorder.VideoEncoder.HEVC)
+                Codec.H264 -> setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            }
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             
+            setOutputFile(outputFile)
             setVideoEncodingBitRate(bitrate)
             setVideoFrameRate(fps)
             setVideoSize(width, height)
             
-            // 10-bit HDR (Profile 2 for HEVC is Main 10)
-            // This is device dependent and might crash if not supported.
-            // In a real app, we should check capabilities first.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                // Try to set profile for 10-bit if possible, but MediaRecorder API for profiles is tricky.
-                // Often better to use MediaCodec directly for full control, but MediaRecorder is requested for simplicity in this scope.
-                // We will stick to standard HEVC for now which often defaults to 8-bit unless HDR is explicitly triggered via CaptureRequest.
-            }
+            // Audio settings
+            setAudioEncodingBitRate(128_000) // 128 kbps
+            setAudioSamplingRate(48000) // 48 kHz
         }
     }
     
     fun getBestResolution(): Pair<Int, Int> {
-        // Placeholder: In real app, query CameraCharacteristics
-        return Pair(3840, 2160) // 4K
+        // Default to 4K, but should query camera characteristics in production
+        return Pair(3840, 2160)
     }
 }

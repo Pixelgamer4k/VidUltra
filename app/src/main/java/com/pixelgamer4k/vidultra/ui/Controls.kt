@@ -1,6 +1,7 @@
 package com.pixelgamer4k.vidultra.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -28,14 +29,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -46,14 +44,43 @@ import com.pixelgamer4k.vidultra.ui.theme.GlassBackground
 import com.pixelgamer4k.vidultra.ui.theme.GlassBorder
 import com.pixelgamer4k.vidultra.ui.theme.TextPrimary
 import com.pixelgamer4k.vidultra.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 @Composable
 fun ControlsOverlay(
     modifier: Modifier = Modifier,
-    onRecordClick: (Boolean) -> Unit
+    isRecording: Boolean,
+    recordingDuration: Long,
+    onRecordClick: (Boolean) -> Unit,
+    onManualControlsChange: (iso: Int?, exposureTime: Long?, focusDistance: Float?, whiteBalance: Int?) -> Unit
 ) {
     var isProMode by remember { mutableStateOf(false) }
-    var isRecording by remember { mutableStateOf(false) }
+    
+    // Manual control states
+    var isoValue by remember { mutableStateOf(800f) }
+    var shutterValue by remember { mutableStateOf(0.5f) }
+    var focusValue by remember { mutableStateOf(0.5f) }
+    var wbValue by remember { mutableStateOf(0.5f) }
+
+    // Update manual controls when sliders change
+    LaunchedEffect(isoValue, shutterValue, focusValue, wbValue) {
+        if (isProMode) {
+            val iso = isoValue.roundToInt()
+            
+            // Convert slider value to exposure time (nanoseconds)
+            // Range: 1/8000s (125000ns) to 1s (1000000000ns)
+            val exposureTime = (125000L + (shutterValue * 999875000L)).toLong()
+            
+            // Focus distance (0 = infinity, higher = closer)
+            val focus = focusValue
+            
+            // White balance temperature (2000K - 10000K)
+            val wb = (2000 + (wbValue * 8000)).roundToInt()
+            
+            onManualControlsChange(iso, exposureTime, focus, wb)
+        }
+    }
 
     Box(modifier = modifier) {
         // Top Left: Histogram
@@ -62,6 +89,14 @@ fun ControlsOverlay(
                 .align(Alignment.TopStart)
                 .size(width = 120.dp, height = 80.dp)
         )
+        
+        // Top Center: Recording indicator & timer
+        if (isRecording) {
+            RecordingIndicator(
+                duration = recordingDuration,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
 
         // Left Side: Settings Stack
         Column(
@@ -70,7 +105,7 @@ fun ControlsOverlay(
                 .padding(top = 100.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FrostedLabel(label = "BITRATE", value = "800 Mbps", icon = true)
+            FrostedLabel(label = "BITRATE", value = "100 Mbps", icon = true)
             FrostedLabel(label = "CODEC", value = "HEVC", icon = true)
             FrostedLabel(label = "DEPTH", value = "10-bit", icon = true)
             FrostedLabel(label = "LOG", value = "OFF", icon = true)
@@ -93,29 +128,11 @@ fun ControlsOverlay(
                 Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary)
             }
 
-            // Record Button
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .border(4.dp, AccentGold, CircleShape)
-                    .padding(6.dp)
-                    .clip(CircleShape)
-                    .background(if (isRecording) Color.Red else Color.Transparent)
-                    .clickable { 
-                        isRecording = !isRecording
-                        onRecordClick(isRecording)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                if (!isRecording) {
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .background(Color.Red)
-                    )
-                }
-            }
+            // Record Button with pulsing animation when recording
+            RecordButton(
+                isRecording = isRecording,
+                onClick = { onRecordClick(!isRecording) }
+            )
 
             // Pro Toggle
             Column(
@@ -143,13 +160,112 @@ fun ControlsOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 24.dp, start = 140.dp, end = 100.dp)
         ) {
-            ProControls()
+            ProControls(
+                isoValue = isoValue,
+                shutterValue = shutterValue,
+                wbValue = wbValue,
+                focusValue = focusValue,
+                onIsoChange = { isoValue = it },
+                onShutterChange = { shutterValue = it },
+                onWbChange = { wbValue = it },
+                onFocusChange = { focusValue = it }
+            )
         }
     }
 }
 
 @Composable
-fun ProControls() {
+fun RecordingIndicator(duration: Long, modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "recording_pulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+    
+    Row(
+        modifier = modifier
+            .frostedGlass()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(Color.Red.copy(alpha = alpha))
+        )
+        Text(
+            text = formatDuration(duration),
+            color = AccentGold,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+fun formatDuration(millis: Long): String {
+    val seconds = (millis / 1000) % 60
+    val minutes = (millis / 60000) % 60
+    val hours = millis / 3600000
+    return if (hours > 0) {
+        String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
+}
+
+@Composable
+fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "record_pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isRecording) 1.1f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+    
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .scale(if (isRecording) scale else 1f)
+            .border(4.dp, AccentGold, CircleShape)
+            .padding(6.dp)
+            .clip(CircleShape)
+            .background(if (isRecording) Color.Red else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!isRecording) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(Color.Red)
+            )
+        }
+    }
+}
+
+@Composable
+fun ProControls(
+    isoValue: Float,
+    shutterValue: Float,
+    wbValue: Float,
+    focusValue: Float,
+    onIsoChange: (Float) -> Unit,
+    onShutterChange: (Float) -> Unit,
+    onWbChange: (Float) -> Unit,
+    onFocusChange: (Float) -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -158,21 +274,54 @@ fun ProControls() {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ProSlider(label = "ISO", value = "800")
-        ProSlider(label = "SHUTTER", value = "1/50")
-        ProSlider(label = "WB", value = "5600K")
-        ProSlider(label = "FOCUS", value = "Manual")
+        ProSlider(
+            label = "ISO",
+            value = isoValue,
+            displayValue = ((100 + isoValue * 6300).roundToInt()).toString(),
+            onValueChange = onIsoChange
+        )
+        ProSlider(
+            label = "SHUTTER",
+            value = shutterValue,
+            displayValue = formatShutterSpeed(shutterValue),
+            onValueChange = onShutterChange
+        )
+        ProSlider(
+            label = "WB",
+            value = wbValue,
+            displayValue = "${(2000 + wbValue * 8000).roundToInt()}K",
+            onValueChange = onWbChange
+        )
+        ProSlider(
+            label = "FOCUS",
+            value = focusValue,
+            displayValue = if (focusValue < 0.1f) "∞" else "${(focusValue * 100).roundToInt()}cm",
+            onValueChange = onFocusChange
+        )
+    }
+}
+
+fun formatShutterSpeed(value: Float): String {
+    // Convert to exposure time
+    val exposureNs = 125000L + (value * 999875000L)
+    val exposureSec = exposureNs / 1_000_000_000.0
+    
+    return if (exposureSec >= 1.0) {
+        "${exposureSec.roundToInt()}s"
+    } else {
+        val shutterSpeed = (1.0 / exposureSec).roundToInt()
+        "1/$shutterSpeed"
     }
 }
 
 @Composable
-fun ProSlider(label: String, value: String) {
+fun ProSlider(label: String, value: Float, displayValue: String, onValueChange: (Float) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, color = TextSecondary, fontSize = 12.sp)
-        Text(value, color = AccentGold, fontWeight = FontWeight.Bold)
+        Text(displayValue, color = AccentGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Slider(
-            value = 0.5f,
-            onValueChange = {},
+            value = value,
+            onValueChange = onValueChange,
             colors = SliderDefaults.colors(
                 thumbColor = AccentGold,
                 activeTrackColor = AccentGold,
