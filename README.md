@@ -117,16 +117,8 @@ Manifest-only:
 - [ ] Zebra stripes
 - [ ] Waveform monitor
 - [ ] LUT support
-- [ ] ProRes export
-
-## License 📄
-
-[Add your license here]
-
-## Credits 💝
-
-Inspired by [FreeDcam](https://github.com/KillerInk/FreeDcam) for Camera2 API architecture.
 
 ---
 
-**VidUltra** - Supreme Cinema in Your Pocket 🎥
+**VidUltra v0.2.1-pre-alpha** - Supreme Cinema in Your Pocket 🎥
+

@@ -1,9 +1,10 @@
 # VidUltra - Project Progress Tracker
 
 ## Current Status
-**Version:** v0.9.0 (UI Complete - Manual Controls Polished)
-**Phase:** Ready for Advanced Features
-**Last Updated:** November 23, 2025 03:57 IST
+**Version:** v0.2.1-pre-alpha
+**Phase:** UI Complete - Manual Controls Polished
+**Last Updated:** November 23, 2025 04:03 IST
+
 
 ## ✅ Completed Milestones
 
@@ -71,11 +72,11 @@
 
 ### Long-term (v2.0.0)
 - [ ] RAW video recording (if supported)
-- [ ] ProRes export
 - [ ] Audio level meters
 - [ ] Timecode display
 - [ ] Log profile support (Flat, Log, HLG)
 - [ ] Advanced stabilization
+
 
 ## 📊 Technical Metrics
 
