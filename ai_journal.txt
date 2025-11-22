@@ -3,28 +3,21 @@
 ## Session: November 23, 2025
 
 ### Objective
-Complete Rebuild of the app using "FreeDcam" core logic while maintaining "Modern Frosted UI".
-
-### Context
-The previous architecture (Compose-bound CameraController) suffered from persistent lifecycle race conditions (Black Screen, Permission Loop). The user requested a "copy of FreeDcam" logic to ensure stability.
+"Nuclear Option": Delete everything and rebuild based on FreeDcam core logic + Modern UI.
 
 ### Actions Taken
-1.  **Created `CameraEngine.kt`**:
-    -   A pure Kotlin class wrapping Camera2 API.
-    -   Manages its own background thread.
-    -   Explicit State Machine (`Closed`, `Opening`, `Preview`, `Error`).
-    -   Direct `MediaRecorder` integration for 4K HEVC.
-    -   Manual Control hooks (ISO, Exposure, Focus).
-2.  **Created `CameraViewModel.kt`**:
-    -   Holds the `CameraEngine` singleton.
-    -   Survives configuration changes.
-    -   Exposes `StateFlow` to UI.
-3.  **Rewrote `CameraScreen.kt`**:
-    -   "Dumb" UI layer.
-    -   Uses `AndroidView` for `SurfaceView`.
-    -   Modern "Frosted Glass" overlays for controls.
-4.  **Cleanup**:
-    -   Deleted legacy `CameraController` and `VideoRecorder`.
+1.  **Cleanup**: Deleted all project files except journals.
+2.  **Rebuild**:
+    -   **Project**: Fresh Gradle setup.
+    -   **Core**: `Camera2Api.kt` - A robust, singleton-style Camera2 wrapper. Features explicit state management (`Closed`, `Opening`, `Preview`, `Recording`) and dedicated background thread.
+    -   **UI**: `CameraScreen.kt` - Jetpack Compose with "Frosted Glass" overlays.
+    -   **Bridge**: `CameraViewModel.kt` - Connects UI to Core.
+
+### Rationale
+The previous codebase suffered from lifecycle race conditions due to tight coupling between Compose and Camera2. The new architecture separates them completely:
+-   **Core** lives in `ViewModel` scope (survives rotation).
+-   **UI** just renders the `Surface` and buttons.
+-   **Surface** lifecycle drives the `openCamera` call via `SurfaceHolder.Callback`.
 
 ### Outcome
-The app now possesses a professional-grade camera core decoupled from the UI, which should eliminate the black screen and permission loop issues.
+A clean, professional-grade codebase ready for testing.
