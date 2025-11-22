@@ -178,29 +178,44 @@ fun SupremeOverlay(
                 .fillMaxWidth()
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Slider popup (appears above controls)
+                // Slider popup (appears above controls with animation)
                 AnimatedVisibility(
                     visible = activeControl != null,
-                    enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
-                    exit = fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
+                    enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + 
+                            androidx.compose.animation.slideInVertically(
+                                animationSpec = androidx.compose.animation.core.spring(
+                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                    stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                                )
+                            ) { it / 2 } +
+                            androidx.compose.animation.scaleIn(
+                                initialScale = 0.8f,
+                                animationSpec = androidx.compose.animation.core.spring(
+                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                    stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                                )
+                            ),
+                    exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) + 
+                           androidx.compose.animation.slideOutVertically { it / 2 } +
+                           androidx.compose.animation.scaleOut(targetScale = 0.8f)
                 ) {
                     val range = when (activeControl) {
                         "ISO" -> 100f..3200f
-                        "S" -> 100000f..33333333f // 1/10000s to 1/30s in ns
+                        "S" -> 100000f..33333333f
                         "F" -> 0f..10f
                         else -> 0f..1f
                     }
                     
                     var sliderValue by remember(activeControl) { mutableFloatStateOf(range.start) }
                     
-                    // Horizontal slider panel
+                    // Frosted glass slider panel
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 40.dp, vertical = 8.dp)
                             .fillMaxWidth(0.8f)
-                            .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
-                            .border(1.dp, Gold, RoundedCornerShape(16.dp))
-                            .padding(16.dp),
+                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -212,9 +227,9 @@ fun SupremeOverlay(
                             },
                             color = Gold,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 18.sp
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Slider(
                             value = sliderValue,
                             onValueChange = { 
@@ -236,16 +251,14 @@ fun SupremeOverlay(
                     }
                 }
                 
-                // Control buttons bar
+                // Frosted glass control bar (no gradient shadow)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(0.8f))
-                            )
-                        )
-                        .padding(vertical = 16.dp, horizontal = 40.dp),
+                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(32.dp))
+                        .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(32.dp))
+                        .padding(vertical = 16.dp, horizontal = 24.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -264,10 +277,11 @@ fun SupremeOverlay(
                     // Format/Mode indicator
                     Box(
                         modifier = Modifier
-                            .background(Gold, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .background(Gold, RoundedCornerShape(12.dp))
+                            .border(1.dp, Color.Black.copy(0.2f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 20.dp, vertical = 10.dp)
                     ) {
-                        Text("4K 30FPS", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("4K 30FPS", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
