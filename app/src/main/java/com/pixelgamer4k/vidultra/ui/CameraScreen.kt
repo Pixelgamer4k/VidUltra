@@ -2,12 +2,21 @@ package com.pixelgamer4k.vidultra.ui
 
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -31,6 +40,16 @@ fun CameraScreen() {
     var isRecording by remember { mutableStateOf(false) }
     var recordingDuration by remember { mutableStateOf(0L) }
     var recordingStartTime by remember { mutableStateOf(0L) }
+    
+    // Debug Logs State
+    var debugLogs by remember { mutableStateOf("Logs:\n") }
+    
+    // Connect logger
+    LaunchedEffect(Unit) {
+        cameraController.onDebugLog = { msg ->
+            debugLogs += "$msg\n"
+        }
+    }
 
     val permissionState = rememberMultiplePermissionsState(
         listOf(
@@ -82,7 +101,7 @@ fun CameraScreen() {
     }
 
     if (permissionState.allPermissionsGranted) {
-        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
             // Camera Preview
             AndroidView(
                 factory = { ctx ->
@@ -90,6 +109,7 @@ fun CameraScreen() {
                         surfaceView = this
                         holder.addCallback(object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
+                                debugLogs += "Surface Created\n"
                                 surfaceReady = true
                                 cameraController.startBackgroundThread()
                                 cameraController.openCamera(holder.surface)
@@ -100,9 +120,12 @@ fun CameraScreen() {
                                 format: Int,
                                 width: Int,
                                 height: Int
-                            ) {}
+                            ) {
+                                debugLogs += "Surface Changed: ${width}x${height}\n"
+                            }
 
                             override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                debugLogs += "Surface Destroyed\n"
                                 surfaceReady = false
                                 if (isRecording) {
                                     videoRecorder.stopRecording()
@@ -115,6 +138,26 @@ fun CameraScreen() {
                 },
                 modifier = Modifier.fillMaxSize()
             )
+            
+            // Debug Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .zIndex(10f)
+                    .align(Alignment.TopCenter)
+            ) {
+                Text(
+                    text = debugLogs,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp)
+                        .verticalScroll(rememberScrollState())
+                )
+            }
             
             // Controls Overlay
             ControlsOverlay(
@@ -132,6 +175,8 @@ fun CameraScreen() {
                                     isRecording = true
                                 }
                             }
+                        } else {
+                            debugLogs += "Error: Recording surface null\n"
                         }
                     } else {
                         // Stop recording

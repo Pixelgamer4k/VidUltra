@@ -10,8 +10,10 @@ import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import android.util.Log
 import android.view.Surface
+import android.widget.Toast
 
 /**
  * Simplified CameraManager - handles only Camera2 operations
@@ -27,6 +29,9 @@ class CameraController(private val context: Context) {
 
     private var backgroundThread: HandlerThread? = null
     private var backgroundHandler: Handler? = null
+    
+    // Debug callback
+    var onDebugLog: ((String) -> Unit)? = null
 
     // Manual Control State
     var iso: Int? = null
@@ -34,14 +39,29 @@ class CameraController(private val context: Context) {
     var focusDistance: Float? = null
     var whiteBalance: Int? = null
     private var manualMode = false
+    
+    private fun log(msg: String) {
+        Log.d(TAG, msg)
+        Handler(Looper.getMainLooper()).post {
+            onDebugLog?.invoke(msg)
+        }
+    }
+    
+    private fun showToast(msg: String) {
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     fun startBackgroundThread() {
         if (backgroundThread != null) return
+        log("Starting background thread")
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
         backgroundHandler = backgroundThread?.looper?.let { Handler(it) }
     }
 
     fun stopBackgroundThread() {
+        log("Stopping background thread")
         backgroundThread?.quitSafely()
         try {
             backgroundThread?.join()
@@ -54,34 +74,57 @@ class CameraController(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun openCamera(surface: Surface) {
+        log("Opening camera...")
         previewSurface = surface
         try {
-            val cameraId = cameraManager.cameraIdList[0]
+            val cameraIdList = cameraManager.cameraIdList
+            if (cameraIdList.isEmpty()) {
+                log("Error: No cameras found!")
+                showToast("Error: No cameras found!")
+                return
+            }
+            
+            val cameraId = cameraIdList[0]
+            log("Using camera ID: $cameraId")
             cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId)
             
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
+                    log("Camera opened successfully")
+                    showToast("Camera Opened")
                     cameraDevice = camera
                     createPreviewSession()
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
+                    log("Camera disconnected")
                     camera.close()
                     cameraDevice = null
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
-                    Log.e(TAG, "Camera error: $error")
+                    val errorMsg = "Camera error: $error"
+                    log(errorMsg)
+                    showToast(errorMsg)
                     camera.close()
                     cameraDevice = null
                 }
             }, backgroundHandler)
         } catch (e: CameraAccessException) {
+            val errorMsg = "CameraAccessException: ${e.message}"
+            log(errorMsg)
+            showToast(errorMsg)
+            Log.e(TAG, "openCamera: ", e)
+        } catch (e: Exception) {
+            val errorMsg = "Exception opening camera: ${e.message}"
+            log(errorMsg)
+            showToast(errorMsg)
             Log.e(TAG, "openCamera: ", e)
         }
     }
 
     private fun createPreviewSession() {
+        log("Creating preview session...")
         try {
             previewSurface?.let { surface ->
                 val builder = cameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
@@ -93,25 +136,33 @@ class CameraController(private val context: Context) {
                     listOf(surface),
                     object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
+                            log("Preview session configured")
+                            showToast("Preview Started")
                             captureSession = session
                             builder?.let {
                                 try {
                                     session.setRepeatingRequest(it.build(), null, backgroundHandler)
-                                    Log.d(TAG, "Preview session started")
+                                    log("Repeating request set")
                                 } catch (e: Exception) {
+                                    log("Error starting preview: ${e.message}")
                                     Log.e(TAG, "Error starting preview: ", e)
                                 }
                             }
                         }
 
                         override fun onConfigureFailed(session: CameraCaptureSession) {
+                            log("Preview session configuration failed")
+                            showToast("Preview Config Failed")
                             Log.e(TAG, "Preview session configuration failed")
                         }
                     },
                     backgroundHandler
                 )
+            } ?: run {
+                log("Error: Preview surface is null")
             }
         } catch (e: Exception) {
+            log("Exception creating session: ${e.message}")
             Log.e(TAG, "createPreviewSession: ", e)
         }
     }
@@ -121,6 +172,7 @@ class CameraController(private val context: Context) {
      * Recording surface comes from VideoRecorder
      */
     fun createRecordingSession(recordingSurface: Surface, onReady: () -> Unit) {
+        log("Creating recording session...")
         try {
             previewSurface?.let { preview ->
                 // Close existing session first
@@ -139,19 +191,23 @@ class CameraController(private val context: Context) {
                     listOf(preview, recordingSurface),
                     object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
+                            log("Recording session configured")
                             captureSession = session
                             builder?.let {
                                 try {
                                     session.setRepeatingRequest(it.build(), null, backgroundHandler)
-                                    Log.d(TAG, "Recording session started")
+                                    log("Recording session started")
                                     onReady() // Signal ready to start recording
                                 } catch (e: Exception) {
+                                    log("Error starting recording session: ${e.message}")
                                     Log.e(TAG, "Error starting recording session: ", e)
                                 }
                             }
                         }
 
                         override fun onConfigureFailed(session: CameraCaptureSession) {
+                            log("Recording session configuration failed")
+                            showToast("Recording Config Failed")
                             Log.e(TAG, "Recording session configuration failed")
                         }
                     },
@@ -159,6 +215,7 @@ class CameraController(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
+            log("Exception creating recording session: ${e.message}")
             Log.e(TAG, "createRecordingSession: ", e)
             e.printStackTrace()
         }
@@ -168,6 +225,7 @@ class CameraController(private val context: Context) {
      * Stops recording session and returns to preview
      */
     fun stopRecordingSession(onStopped: () -> Unit) {
+        log("Stopping recording session...")
         try {
             captureSession?.close()
             captureSession = null
@@ -175,6 +233,7 @@ class CameraController(private val context: Context) {
             createPreviewSession()
             onStopped()
         } catch (e: Exception) {
+            log("Error stopping recording session: ${e.message}")
             Log.e(TAG, "stopRecordingSession: ", e)
         }
     }
@@ -289,6 +348,7 @@ class CameraController(private val context: Context) {
     }
 
     fun closeCamera() {
+        log("Closing camera")
         captureSession?.close()
         captureSession = null
         cameraDevice?.close()
