@@ -245,44 +245,28 @@ fun SupremeOverlay(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                // Draw custom gallery icon
+                // Draw custom gallery icon - minimalist grid
                 Canvas(modifier = Modifier.size(24.dp)) {
                     val iconSize = size.width
-                    val strokeWidth = 2.dp.toPx()
+                    val gridSize = 9.dp.toPx() // Size of each grid square
+                    val gap = 2.dp.toPx() // Gap between squares
+                    val cornerRadius = 1.5.dp.toPx()
                     
-                    // Rounded square border
-                    drawRoundRect(
-                        color = Color.White,
-                        topLeft = Offset(0f, 0f),
-                        size = androidx.compose.ui.geometry.Size(iconSize, iconSize),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()),
-                        style = Stroke(width = strokeWidth)
-                    )
-                    
-                    // Sun/Circle in top left
-                    drawCircle(
-                        color = Color.White,
-                        radius = 2.5.dp.toPx(),
-                        center = Offset(iconSize * 0.25f, iconSize * 0.25f)
-                    )
-                    
-                    // Mountain path (two triangles)
-                    val mountainPath = Path().apply {
-                        // Left mountain
-                        moveTo(0f, iconSize)
-                        lineTo(iconSize * 0.35f, iconSize * 0.5f)
-                        lineTo(iconSize * 0.6f, iconSize)
-                        
-                        // Right mountain
-                        moveTo(iconSize * 0.4f, iconSize)
-                        lineTo(iconSize * 0.75f, iconSize * 0.3f)
-                        lineTo(iconSize, iconSize)
+                    // 2x2 grid of rounded rectangles
+                    for (row in 0..1) {
+                        for (col in 0..1) {
+                            val x = (iconSize - gridSize * 2 - gap) / 2 + col * (gridSize + gap)
+                            val y = (iconSize - gridSize * 2 - gap) / 2 + row * (gridSize + gap)
+                            
+                            drawRoundRect(
+                                color = Color.White,
+                                topLeft = Offset(x, y),
+                                size = androidx.compose.ui.geometry.Size(gridSize, gridSize),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
+                            )
+                        }
                     }
-                    drawPath(
-                        path = mountainPath,
-                        color = Color.White,
-                        style = Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
-                    )
+                }
                 }
             }
             CircleIcon("R")
