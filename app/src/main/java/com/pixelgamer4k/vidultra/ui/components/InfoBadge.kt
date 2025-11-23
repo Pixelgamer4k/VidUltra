@@ -17,11 +17,16 @@ import androidx.compose.ui.unit.sp
 fun InfoBadge(
     label: String,
     value: String,
-    valueColor: Color = Color(0xFFFFD700), // Gold
     modifier: Modifier = Modifier
 ) {
-    CompactGlassPill(modifier = modifier) {
+    GlassPill(
+        modifier = modifier
+            .width(110.dp)
+            .height(50.dp),
+        cornerRadius = 16.dp
+    ) {
         Column(
+            modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
@@ -34,29 +39,8 @@ fun InfoBadge(
             Text(
                 value,
                 fontSize = 14.sp,
-                color = valueColor,
+                color = Color(0xFFFFD700),
                 fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-/**
- * Histogram-style badge (for waveform/histogram display)
- */
-@Composable
-fun HistogramBadge(
-    modifier: Modifier = Modifier
-) {
-    CompactGlassPill(modifier = modifier.size(80.dp, 60.dp)) {
-        // Placeholder for actual histogram
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "📊",
-                fontSize = 24.sp
             )
         }
     }
