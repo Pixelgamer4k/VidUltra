@@ -1,9 +1,8 @@
 package com.pixelgamer4k.vidultra.ui
 
-import android.view.SurfaceHolder
-import android.view.SurfaceView
 import android.view.Surface
-import android.opengl.GLSurfaceView
+import android.view.TextureView
+import android.graphics.SurfaceTexture
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -14,7 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -31,7 +29,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.pixelgamer4k.vidultra.core.Camera2Api
-import com.pixelgamer4k.vidultra.core.renderer.FocusPeakingRenderer
 import com.pixelgamer4k.vidultra.ui.components.*
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalAnimationApi::class)
@@ -47,43 +44,26 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val availableResolutions = cameraViewModel.availableResolutions.collectAsState().value
     
     var activeControl by remember { mutableStateOf<String?>(null) }
-    var peakingEnabled by remember { mutableStateOf(false) }
     var showResolutionSelector by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (permissionState.allPermissionsGranted) {
-            // Full Screen Preview
-            val renderer = remember {
-                FocusPeakingRenderer { surfaceTexture ->
-                    surfaceTexture.setDefaultBufferSize(selectedResolution.width, selectedResolution.height)
-                    val surface = Surface(surfaceTexture)
-                    cameraViewModel.onSurfaceReady(surface)
-                }
-            }
-            
-            // Update buffer size when resolution changes
-            LaunchedEffect(selectedResolution) {
-                renderer.setVideoDimensions(selectedResolution.width, selectedResolution.height)
-            }
-            
-            DisposableEffect(Unit) {
-                onDispose {
-                    cameraViewModel.onSurfaceDestroyed()
-                }
-            }
-
+            // Simple TextureView Preview
             AndroidView(
-                factory = { ctx ->
-                    GLSurfaceView(ctx).apply {
-                        setEGLContextClientVersion(2)
-                        setRenderer(renderer)
-                        renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-                        renderer.requestRender = { requestRender() }
+                factory = { context ->
+                    TextureView(context).apply {
+                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                                cameraViewModel.onSurfaceReady(Surface(surface))
+                            }
+                            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+                            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                                cameraViewModel.onSurfaceDestroyed()
+                                return true
+                            }
+                            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+                        }
                     }
-                },
-                update = {
-                    renderer.isPeakingEnabled = peakingEnabled
-                    it.requestRender()
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -100,8 +80,6 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
                 onShutterChange = { cameraViewModel.setExposure(it.toLong()) },
                 onFocusChange = { cameraViewModel.setFocus(it.toFloat()) },
                 onBitDepthChange = { cameraViewModel.setBitDepth(it) },
-                peakingEnabled = peakingEnabled,
-                onPeakingToggle = { peakingEnabled = !peakingEnabled },
                 selectedResolution = selectedResolution,
                 onResolutionClick = { showResolutionSelector = true }
             )
@@ -134,8 +112,6 @@ fun ExactPremiumOverlay(
     onShutterChange: (Int) -> Unit,
     onFocusChange: (Int) -> Unit,
     onBitDepthChange: (Int) -> Unit,
-    peakingEnabled: Boolean,
-    onPeakingToggle: () -> Unit,
     selectedResolution: com.pixelgamer4k.vidultra.core.Resolution,
     onResolutionClick: () -> Unit
 ) {
@@ -186,11 +162,6 @@ fun ExactPremiumOverlay(
         ) {
             CircularIconButton(icon = Icons.Default.Face) // Gallery
             CircularIconButton(icon = Icons.Default.List) // Grid
-            CircularIconButton(
-                icon = Icons.Default.Visibility, 
-                isActive = peakingEnabled,
-                onClick = onPeakingToggle
-            ) // Peaking
             CircularIconButton(icon = Icons.Default.Settings) // Settings
             CircularIconButton(icon = Icons.Default.Lock) // Lock
         }
