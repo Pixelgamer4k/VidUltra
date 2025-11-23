@@ -97,6 +97,17 @@ class Camera2Api(private val context: Context) {
     }
     
     fun getSelectedResolution(): Resolution = selectedResolution
+    
+    fun getSensorOrientation(): Int {
+        return try {
+            val cameraId = getBackCameraId() ?: return 0
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting sensor orientation", e)
+            0
+        }
+    }
 
     sealed class CameraState {
         object Closed : CameraState()

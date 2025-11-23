@@ -3,6 +3,9 @@ package com.pixelgamer4k.vidultra.ui
 import android.view.Surface
 import android.view.TextureView
 import android.graphics.SurfaceTexture
+import android.graphics.Matrix
+import android.graphics.RectF
+import android.app.Activity
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -31,6 +34,43 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.pixelgamer4k.vidultra.core.Camera2Api
 import com.pixelgamer4k.vidultra.ui.components.*
 
+// Helper function to configure TextureView transform matrix
+fun configureTransform(
+    textureView: TextureView,
+    viewWidth: Int,
+    viewHeight: Int,
+    previewWidth: Int,
+    previewHeight: Int,
+    activity: Activity?
+) {
+    activity ?: return
+    
+    val rotation = activity.windowManager.defaultDisplay.rotation
+    val matrix = Matrix()
+    val viewRect = RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
+    val bufferRect = RectF(0f, 0f, previewHeight.toFloat(), previewWidth.toFloat())
+    val centerX = viewRect.centerX()
+    val centerY = viewRect.centerY()
+    
+    when (rotation) {
+        Surface.ROTATION_90, Surface.ROTATION_270 -> {
+            bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
+            matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
+            val scale = Math.max(
+                viewHeight.toFloat() / previewHeight,
+                viewWidth.toFloat() / previewWidth
+            )
+            matrix.postScale(scale, scale, centerX, centerY)
+            matrix.postRotate((90 * (rotation - 2)).toFloat(), centerX, centerY)
+        }
+        Surface.ROTATION_180 -> {
+            matrix.postRotate(180f, centerX, centerY)
+        }
+    }
+    
+    textureView.setTransform(matrix)
+}
+
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
@@ -39,29 +79,6 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     )
     val cameraState = cameraViewModel.state.collectAsState().value
     val bitDepth = cameraViewModel.bitDepth.collectAsState().value
-    val supports10Bit = cameraViewModel.supports10Bit.collectAsState().value
-    val selectedResolution = cameraViewModel.selectedResolution.collectAsState().value
-    val availableResolutions = cameraViewModel.availableResolutions.collectAsState().value
-    
-    var activeControl by remember { mutableStateOf<String?>(null) }
-    var showResolutionSelector by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        if (permissionState.allPermissionsGranted) {
-            // Simple TextureView Preview
-            AndroidView(
-                factory = { context ->
-                    TextureView(context).apply {
-                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-                                cameraViewModel.onSurfaceReady(Surface(surface))
-                            }
-                            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-                            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-                                cameraViewModel.onSurfaceDestroyed()
-                                return true
-                            }
-                            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
                         }
                     }
                 },

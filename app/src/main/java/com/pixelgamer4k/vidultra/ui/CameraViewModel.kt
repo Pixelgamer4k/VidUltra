@@ -40,6 +40,8 @@ class CameraViewModel(application: Application) : AndroidViewModel(application) 
         api.setResolution(resolution)
         _selectedResolution.value = resolution
     }
+    
+    fun getSensorOrientation(): Int = api.getSensorOrientation()
 
     fun onSurfaceReady(surface: Surface) {
         api.openCamera(surface)
