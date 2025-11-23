@@ -30,8 +30,6 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.pixelgamer4k.vidultra.core.Camera2Api
 import com.pixelgamer4k.vidultra.ui.components.*
 
-val Gold = Color(0xFFFFD700)
-
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
@@ -60,8 +58,8 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
                 modifier = Modifier.fillMaxSize()
             )
             
-            // Premium UI Overlay
-            PremiumCameraOverlay(
+            // 1:1 Premium UI Overlay
+            ExactPremiumOverlay(
                 isRecording = cameraState is Camera2Api.CameraState.Recording,
                 bitDepth = bitDepth,
                 supports10Bit = supports10Bit,
@@ -81,7 +79,7 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun PremiumCameraOverlay(
+fun ExactPremiumOverlay(
     isRecording: Boolean,
     bitDepth: Int,
     supports10Bit: Boolean,
@@ -93,275 +91,228 @@ fun PremiumCameraOverlay(
     onFocusChange: (Int) -> Unit,
     onBitDepthChange: (Int) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         
-        // TOP LEFT: Info Badges
+        // --- TOP LEFT SECTION ---
+        Row(
+            modifier = Modifier.align(Alignment.TopStart),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Histogram
+            HistogramWidget()
+            
+            // Status Grid (Battery, Storage, etc.)
+            StatusGrid()
+        }
+        
+        // --- LEFT SIDE STACK ---
         Column(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .align(Alignment.CenterStart)
+                .padding(top = 100.dp), // Push down below histogram
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Bitrate
-            InfoBadge(
+            LargeInfoBadge(
                 label = "BITRATE",
                 value = if (bitDepth == 10) "150 Mbps" else "100 Mbps"
             )
             
-            // Codec
-            InfoBadge(
+            LargeInfoBadge(
                 label = "CODEC",
                 value = "HEVC"
             )
             
-            // Bit depth
-            InfoBadge(
+            LargeInfoBadge(
                 label = "DEPTH",
-                value = "$bitDepth-bit"
+                value = "$bitDepth-bit",
+                showToggle = true,
+                isToggled = bitDepth == 10,
+                onToggle = { if (supports10Bit) onBitDepthChange(if (it) 10 else 8) }
             )
         }
         
-        // TOP RIGHT: Icon Buttons
+        // --- TOP RIGHT ICONS ---
         Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.align(Alignment.TopEnd),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Gallery
-            IconButton(
-                onClick = { /* TODO */ },
-                icon = Icons.Default.Face // Placeholder for Gallery
-            )
-            
-            // Grid
-            IconButton(
-                onClick = { /* TODO */ },
-                icon = Icons.Default.List // Placeholder for Grid
-            )
-            
-            // Settings
-            IconButton(
-                onClick = { /* TODO */ },
-                icon = Icons.Default.Settings
-            )
-            
-            // Lock
-            IconButton(
-                onClick = { /* TODO */ },
-                icon = Icons.Default.Lock
-            )
+            CircularIconButton(icon = Icons.Default.Face) // Gallery
+            CircularIconButton(icon = Icons.Default.List) // Grid
+            CircularIconButton(icon = Icons.Default.Settings) // Settings
+            CircularIconButton(icon = Icons.Default.Lock) // Lock
         }
         
-        // BOTTOM CENTER: Manual Controls Bar
-        AnimatedVisibility(
-            visible = activeControl == null,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        // --- BOTTOM CONTROLS ---
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 120.dp)
+                .fillMaxWidth()
+                .padding(bottom = 20.dp)
         ) {
-            GlassPill(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .height(70.dp)
+            // Manual Controls Bar (Center)
+            AnimatedVisibility(
+                visible = activeControl == null,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp)
             ) {
-                Row(
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                        .width(340.dp)
+                        .height(72.dp)
+                        .background(Color(0xFF0F0F0F).copy(alpha = 0.95f), RoundedCornerShape(36.dp))
+                        .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(36.dp))
+                        .padding(horizontal = 24.dp)
                 ) {
-                    // ISO
-                    ControlButton(
-                        label = "ISO",
-                        onClick = { onActiveControlChange("ISO") }
-                    )
-                    
-                    // Shutter (S)
-                    ControlButton(
-                        label = "S",
-                        subtitle = "1/50",
-                        onClick = { onActiveControlChange("SHUTTER") }
-                    )
-                    
-                    // Focus (F)
-                    ControlButton(
-                        label = "F",
-                        onClick = { onActiveControlChange("FOCUS") }
-                    )
-                    
-                    // Shutter icon
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(Color.White, CircleShape)
-                            .border(3.dp, Color.Black.copy(0.2f), CircleShape),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // ISO
+                        ControlText(text = "ISO", onClick = { onActiveControlChange("ISO") })
+                        
+                        // Shutter
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { onActiveControlChange("SHUTTER") }
+                        ) {
+                            Text("S", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("1/50", color = VidUltraYellow, fontSize = 11.sp)
+                        }
+                        
+                        // Focus
+                        ControlText(text = "F", onClick = { onActiveControlChange("FOCUS") })
+                        
+                        // Separator
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
-                                .background(Color.Black, CircleShape)
+                                .width(1.dp)
+                                .height(24.dp)
+                                .background(Color.White.copy(0.2f))
+                        )
+                        
+                        // Aperture Icon
+                        Icon(
+                            imageVector = Icons.Default.Settings, // Using Settings as Aperture placeholder
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
+            
+            // 4K Badge (Right of controls)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 40.dp, end = 100.dp)
+            ) {
+                FormatBadge(text = "4K 30")
+            }
+            
+            // Record Button (Far Right)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 20.dp)
+            ) {
+                BigRecordButton(
+                    isRecording = isRecording,
+                    onClick = { onRecord(isRecording) }
+                )
+            }
         }
         
-        // DIAL OVERLAYS
-        AnimatedVisibility(
-            visible = activeControl == "ISO",
-            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 140.dp)
-        ) {
-            DialControl(
-                label = "ISO",
-                currentValue = "400",
-                minValue = 100,
-                maxValue = 3200,
-                onValueChange = onIsoChange,
-                onDismiss = { onActiveControlChange(null) }
-            )
-        }
-        
-        AnimatedVisibility(
-            visible = activeControl == "SHUTTER",
-            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 140.dp)
-        ) {
-            DialControl(
-                label = "SHUTTER",
-                currentValue = "1/50",
-                minValue = 1,
-                maxValue = 8000,
-                onValueChange = onShutterChange,
-                onDismiss = { onActiveControlChange(null) }
-            )
-        }
-        
-        AnimatedVisibility(
-            visible = activeControl == "FOCUS",
-            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 140.dp)
-        ) {
-            DialControl(
-                label = "FOCUS",
-                currentValue = "∞",
-                minValue = 0,
-                maxValue = 100,
-                onValueChange = onFocusChange,
-                onDismiss = { onActiveControlChange(null) }
-            )
-        }
-        
-        // BOTTOM: Record Button
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp)
-        ) {
-            RecordButton(
-                isRecording = isRecording,
-                onClick = { onRecord(isRecording) }
-            )
+        // --- DIAL OVERLAYS (Top Center) ---
+        // Reuse existing DialControl logic but position it correctly
+        if (activeControl != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 120.dp) // Above the controls
+            ) {
+                when (activeControl) {
+                    "ISO" -> DialControl(
+                        label = "ISO",
+                        currentValue = "400",
+                        minValue = 100,
+                        maxValue = 3200,
+                        onValueChange = onIsoChange,
+                        onDismiss = { onActiveControlChange(null) }
+                    )
+                    "SHUTTER" -> DialControl(
+                        label = "SHUTTER",
+                        currentValue = "1/50",
+                        minValue = 1,
+                        maxValue = 8000,
+                        onValueChange = onShutterChange,
+                        onDismiss = { onActiveControlChange(null) }
+                    )
+                    "FOCUS" -> DialControl(
+                        label = "FOCUS",
+                        currentValue = "∞",
+                        minValue = 0,
+                        maxValue = 100,
+                        onValueChange = onFocusChange,
+                        onDismiss = { onActiveControlChange(null) }
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun IconButton(
-    onClick: () -> Unit,
-    icon: ImageVector
-) {
+fun CircularIconButton(icon: ImageVector) {
     Box(
         modifier = Modifier
-            .size(52.dp)
-            .background(
-                Color(0xFF2A2A2A).copy(0.8f),
-                CircleShape
-            )
-            .border(1.dp, Color.White.copy(0.1f), CircleShape)
-            .clickable(onClick = onClick),
+            .size(48.dp)
+            .background(Color(0xFF2A2A2A).copy(0.9f), CircleShape)
+            .border(1.dp, Color.White.copy(0.1f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(22.dp)
         )
     }
 }
 
 @Composable
-fun ControlButton(
-    label: String,
-    subtitle: String? = null,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier.clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            label,
-            fontSize = 20.sp,
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
-        if (subtitle != null) {
-            Text(
-                subtitle,
-                fontSize = 11.sp,
-                color = Gold
-            )
-        }
-    }
-}
-
-@Composable
-fun RecordButton(
-    isRecording: Boolean,
-    onClick: () -> Unit
-) {
-    val scale by animateFloatAsState(
-        targetValue = if (isRecording) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+fun ControlText(text: String, onClick: () -> Unit) {
+    Text(
+        text = text,
+        color = Color.White,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        modifier = Modifier.clickable(onClick = onClick)
     )
-    
+}
+
+@Composable
+fun BigRecordButton(isRecording: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(76.dp)
-            .scale(scale)
+            .size(84.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        // Outer ring
+        // Outer Ring
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Color.White.copy(if (isRecording) 0.3f else 0.4f),
-                    CircleShape
-                )
-                .border(3.dp, Color.White.copy(0.6f), CircleShape)
+                .border(4.dp, Color.White.copy(0.3f), CircleShape)
         )
         
-        // Inner button
+        // Inner Circle
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(6.dp)
-                .background(
-                    if (isRecording) Color(0xFFFF3B30) else Color.White,
-                    if (isRecording) RoundedCornerShape(8.dp) else CircleShape
-                )
-                .clickable(onClick = onClick)
+                .size(64.dp)
+                .background(Color(0xFFFF3B30), if (isRecording) RoundedCornerShape(16.dp) else CircleShape)
         )
     }
 }
