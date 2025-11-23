@@ -301,17 +301,19 @@ class Camera2Api(private val context: Context) {
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
         
-        // NO tone mapping settings - let camera use default natural processing
-        // This gives the best, most natural colors
+        // **TONE MAPPING FIX**
+        // 1. Force MANUAL capture intent to disable "smart" stock processing (HDR, scene optimization)
+        builder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CameraMetadata.CONTROL_CAPTURE_INTENT_MANUAL)
         
-        // Disable edge enhancement for soft, cinematic look
-        builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF)
+        // 2. Use GAMMA 2.2 for standard, neutral brightness (fixes "dark linear" look)
+        // This overrides the dynamic stock tone curve with a fixed, predictable gamma
+        builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
+        builder.set(CaptureRequest.TONEMAP_GAMMA, 2.2f)
         
-        // Minimal noise reduction for natural grain/film look
-        builder.set(CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_MINIMAL)
-        
-        // Disable video stabilization for more organic movement
-        builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
+        // 3. Disable enhancements for soft, cinematic look
+        builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF) // No artificial sharpening
+        builder.set(CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_MINIMAL) // Natural grain
+        builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF) // Organic movement
         
         if (iso != null || exposure != null) {
             builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
