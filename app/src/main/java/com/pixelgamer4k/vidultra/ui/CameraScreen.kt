@@ -40,6 +40,45 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val cameraState = cameraViewModel.state.collectAsState().value
     val bitDepth = cameraViewModel.bitDepth.collectAsState().value
     val supports10Bit = cameraViewModel.supports10Bit.collectAsState().value
+    val selectedResolution = cameraViewModel.selectedResolution.collectAsState().value
+    val availableResolutions = cameraViewModel.availableResolutions.collectAsState().value
+    
+    var activeControl by remember { mutableStateOf<String?>(null) }
+    var showResolutionSelector by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        if (permissionState.allPermissionsGranted) {
+            // AutoFitSurfaceView Preview
+            AndroidView(
+                factory = { context ->
+                    AutoFitSurfaceView(context).apply {
+                        // Set aspect ratio based on selected resolution
+                        setAspectRatio(selectedResolution.width, selectedResolution.height)
+                        
+                        holder.addCallback(object : SurfaceHolder.Callback {
+                            override fun surfaceCreated(holder: SurfaceHolder) {
+                                // Start camera with the surface
+                                cameraViewModel.onSurfaceReady(holder.surface)
+                            }
+                            
+                            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                                // Surface size changed - could update here if needed
+                            }
+                            
+                            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                cameraViewModel.onSurfaceDestroyed()
+                            }
+                        })
+                    }
+                },
+                update = { view ->
+                    // Update aspect ratio if resolution changes
+                    view.setAspectRatio(selectedResolution.width, selectedResolution.height)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // 1:1 Premium UI Overlay
             ExactPremiumOverlay(
                 isRecording = cameraState is Camera2Api.CameraState.Recording,
                 bitDepth = bitDepth,
