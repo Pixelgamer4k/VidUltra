@@ -191,32 +191,71 @@ class Camera2Api(private val context: Context) {
             closePreviewSession()
             setupVideoEncoder()
             
-            val surfaces = listOf(previewSurface!!, recorderSurface!!)
-            
             previewRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
             previewRequestBuilder!!.addTarget(previewSurface!!)
             previewRequestBuilder!!.addTarget(recorderSurface!!)
             
             applySettings()
 
-            cameraDevice!!.createCaptureSession(
-                surfaces,
-                object : CameraCaptureSession.StateCallback() {
-                    override fun onConfigured(session: CameraCaptureSession) {
-                        captureSession = session
-                        updatePreview()
-                        videoEncoder?.start()
-                        _state.value = CameraState.Recording
-                    }
+            // Use OutputConfiguration with DynamicRangeProfile for BT.2020 support (Android 13+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && currentColorProfile.id == 5) {
+                // REC2020 mode - use HLG10 dynamic range profile
+                val previewOutputConfig = android.hardware.camera2.params.OutputConfiguration(previewSurface!!)
+                val recorderOutputConfig = android.hardware.camera2.params.OutputConfiguration(recorderSurface!!)
+                
+                // Set HLG10 dynamic range profile on recorder surface
+                try {
+                    recorderOutputConfig.setDynamicRangeProfile(android.hardware.camera2.params.DynamicRangeProfiles.HLG10)
+                    Log.i(TAG, "✅ Set DynamicRangeProfile.HLG10 for BT.2020 recording")
+                    LogWriter.writeLog("DynamicRangeProfile: HLG10 (enables BT.2020 metadata)")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Device doesn't support HLG10, falling back to SDR", e)
+                    LogWriter.writeLog("WARNING: HLG10 not supported, using SDR fallback")
+                }
+                
+                // Create session configuration
+                val sessionConfig = android.hardware.camera2.params.SessionConfiguration(
+                    android.hardware.camera2.params.SessionConfiguration.SESSION_REGULAR,
+                    listOf(previewOutputConfig, recorderOutputConfig),
+                    context.mainExecutor,
+                    object : CameraCaptureSession.StateCallback() {
+                        override fun onConfigured(session: CameraCaptureSession) {
+                            captureSession = session
+                            updatePreview()
+                            videoEncoder?.start()
+                            _state.value = CameraState.Recording
+                        }
 
-                    override fun onConfigureFailed(session: CameraCaptureSession) {
-                        _state.value = CameraState.Error("Recording Config Failed")
+                        override fun onConfigureFailed(session: CameraCaptureSession) {
+                            _state.value = CameraState.Error("Recording Config Failed")
+                        }
                     }
-                },
-                backgroundHandler
-            )
+                )
+                
+                cameraDevice!!.createCaptureSession(sessionConfig)
+            } else {
+                // Legacy mode or non-REC2020 profile
+                val surfaces = listOf(previewSurface!!, recorderSurface!!)
+                cameraDevice!!.createCaptureSession(
+                    surfaces,
+                    object : CameraCaptureSession.StateCallback() {
+                        override fun onConfigured(session: CameraCaptureSession) {
+                            captureSession = session
+                            updatePreview()
+                            videoEncoder?.start()
+                            _state.value = CameraState.Recording
+                        }
+
+                        override fun onConfigureFailed(session: CameraCaptureSession) {
+                            _state.value = CameraState.Error("Recording Config Failed")
+                        }
+                    },
+                    backgroundHandler
+                )
+            }
         } catch (e: Exception) {
             Log.e(TAG, "startRecording: ", e)
+            LogWriter.writeLog("ERROR: startRecording failed: ${e.message}")
             _state.value = CameraState.Error(e.message ?: "Recording Error")
         }
     }
