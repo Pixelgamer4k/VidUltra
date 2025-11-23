@@ -6,7 +6,6 @@ import android.hardware.camera2.*
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaFormat
-import android.media.MediaRecorder
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
@@ -45,8 +44,9 @@ class Camera2Api(private val context: Context) {
     private var previewSurface: Surface? = null
     private var recorderSurface: Surface? = null
     
-    // Recorder
-    private var mediaRecorder: MediaRecorder? = null
+    // Video Encoder
+    private var videoEncoder: VideoEncoder? = null
+    private var currentColorProfile: ColorProfile = ColorProfiles.getById(3)
     
     // Manual Settings
     var iso: Int? = null
@@ -188,7 +188,7 @@ class Camera2Api(private val context: Context) {
         
         try {
             closePreviewSession()
-            setupMediaRecorder()
+            setupVideoEncoder()
             
             val surfaces = listOf(previewSurface!!, recorderSurface!!)
             
@@ -204,7 +204,7 @@ class Camera2Api(private val context: Context) {
                     override fun onConfigured(session: CameraCaptureSession) {
                         captureSession = session
                         updatePreview()
-                        mediaRecorder?.start()
+                        videoEncoder?.start()
                         _state.value = CameraState.Recording
                     }
 
@@ -222,60 +222,45 @@ class Camera2Api(private val context: Context) {
 
     fun stopRecording() {
         try {
-            mediaRecorder?.stop()
-            mediaRecorder?.reset()
+            videoEncoder?.stop()
+            videoEncoder?.release()
+            videoEncoder = null
             startPreview()
         } catch (e: Exception) {
             Log.e(TAG, "stopRecording: ", e)
         }
     }
 
-    private fun setupMediaRecorder() {
-        if (mediaRecorder == null) mediaRecorder = MediaRecorder()
-        else mediaRecorder?.reset()
+    private fun setupVideoEncoder() {
+        // Create output folder
+        val outputDir = File(context.getExternalFilesDir(null), "VidUltra")
+        if (!outputDir.exists()) outputDir.mkdirs()
         
-        val contentValues = android.content.ContentValues().apply {
-            put(android.provider.MediaStore.Video.Media.DISPLAY_NAME, "VID_${System.currentTimeMillis()}.mp4")
-            put(android.provider.MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                put(android.provider.MediaStore.Video.Media.RELATIVE_PATH, "DCIM/VidUltra")
-            }
-        }
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val outputFile = File(outputDir, "VID_${timestamp}.mp4")
         
-        val uri = context.contentResolver.insert(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
-            ?: throw Exception("Failed to create MediaStore entry")
+        // Create encoder
+        videoEncoder = VideoEncoder(
+            outputFile = outputFile,
+            width = 3840,
+            height = 2160,
+            frameRate = 30,
+            bitDepth = bitDepth
+        ).apply {
+            // Configure color space from current profile
+            colorStandard = currentColorProfile.colorStandard
+            colorTransfer = currentColorProfile.colorTransfer
+            colorRange = currentColorProfile.colorRange
             
-        val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "rw")?.fileDescriptor
-            ?: throw Exception("Failed to open file descriptor")
-        
-        mediaRecorder?.apply {
-            setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setOutputFile(fileDescriptor)
-            
-            // Configure bitrate and profile based on bit depth
-            if (bitDepth == 10 && supports10Bit) {
-                setVideoEncodingBitRate(150_000_000) // Higher bitrate for 10-bit
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    setVideoEncodingProfileLevel(
-                        MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10,
-                        MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel51
-                    )
-                }
-                Log.i(TAG, "Recording configured for 10-bit HEVC @ 150Mbps")
-            } else {
-                setVideoEncodingBitRate(100_000_000) // Standard bitrate for 8-bit
-                Log.i(TAG, "Recording configured for 8-bit HEVC @ 100Mbps")
-            }
-            
-            setVideoFrameRate(30)
-            setVideoSize(3840, 2160)
-            setVideoEncoder(MediaRecorder.VideoEncoder.HEVC)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            // Prepare encoder
             prepare()
-            recorderSurface = surface
+            
+            // Get encoder surface
+            recorderSurface = inputSurface
         }
+        
+        Log.i(TAG, "VideoEncoder configured with profile: ${currentColorProfile.displayName}")
+        Log.i(TAG, "Output: ${outputFile.absolutePath}")
     }
 
     private fun closePreviewSession() {
@@ -287,8 +272,8 @@ class Camera2Api(private val context: Context) {
         closePreviewSession()
         cameraDevice?.close()
         cameraDevice = null
-        mediaRecorder?.release()
-        mediaRecorder = null
+        videoEncoder?.release()
+        videoEncoder = null
         _state.value = CameraState.Closed
     }
     
@@ -298,59 +283,48 @@ class Camera2Api(private val context: Context) {
     fun setManualFocus(value: Float) { focus = value; applySettings(); updatePreview() }
     fun setAuto() { iso = null; exposure = null; focus = null; applySettings(); updatePreview() }
 
-    // Tone Mapping Modes
-    // 0: FAST (Stock)
-    // 1: HIGH_QUALITY
-    // 2: FLAT (Linear 1:1)
-    // 3: GAMMA (2.2)
-    // 4: REC709 (Preset)
+    // Color Profile Management
     private var toneMapMode = 3 // Default to GAMMA (FreeDcam style)
 
     fun setToneMapMode(mode: Int) {
         toneMapMode = mode
+        currentColorProfile = ColorProfiles.getById(mode)
         applySettings()
         updatePreview()
+        Log.i(TAG, "Color profile changed to: ${currentColorProfile.displayName}")
     }
     
     fun getToneMapMode() = toneMapMode
 
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
+        val profile = currentColorProfile
         
-        // **TONE MAPPING SELECTOR**
         // Force MANUAL capture intent to disable "smart" stock processing (HDR, scene optimization)
         builder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CameraMetadata.CONTROL_CAPTURE_INTENT_MANUAL)
         
-        when (toneMapMode) {
-            0 -> { // FAST (Stock-ish but with Manual Intent)
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_FAST)
+        // Apply tone mapping from ColorProfile
+        builder.set(CaptureRequest.TONEMAP_MODE, profile.tonemapMode)
+        
+        // Apply profile-specific settings
+        when {
+            profile.tonemapCurve != null -> {
+                builder.set(CaptureRequest.TONEMAP_CURVE, profile.tonemapCurve)
             }
-            1 -> { // HIGH_QUALITY
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_HIGH_QUALITY)
+            profile.tonemapGamma != null -> {
+                builder.set(CaptureRequest.TONEMAP_GAMMA, profile.tonemapGamma)
             }
-            2 -> { // FLAT (Linear 1:1)
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_CONTRAST_CURVE)
-                val linearCurve = android.hardware.camera2.params.TonemapCurve(
-                    floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f),
-                    floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f),
-                    floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f)
-                )
-                builder.set(CaptureRequest.TONEMAP_CURVE, linearCurve)
-            }
-            3 -> { // GAMMA 2.2 (Default/Neutral)
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
-                builder.set(CaptureRequest.TONEMAP_GAMMA, 2.2f)
-            }
-            4 -> { // REC709 (Preset)
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_PRESET_CURVE)
-                builder.set(CaptureRequest.TONEMAP_PRESET_CURVE, CameraMetadata.TONEMAP_PRESET_CURVE_REC709)
-            }
-            5 -> { // REC2020 (Gamma 2.4 - BT.1886)
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
-                builder.set(CaptureRequest.TONEMAP_GAMMA, 2.4f)
+            profile.tonemapPresetCurve != null -> {
+                builder.set(CaptureRequest.TONEMAP_PRESET_CURVE, profile.tonemapPresetCurve)
             }
         }
         
+        // Disable enhancements for soft, cinematic look
+        builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF)
+        builder.set(CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_MINIMAL)
+        builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
+        
+        // Manual controls
         if (iso != null || exposure != null) {
             builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
             iso?.let { builder.set(CaptureRequest.SENSOR_SENSITIVITY, it) }
