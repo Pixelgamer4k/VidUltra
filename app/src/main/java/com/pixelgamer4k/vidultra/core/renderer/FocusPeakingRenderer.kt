@@ -105,34 +105,37 @@ class FocusPeakingRenderer(
         this.height = height
         GLES20.glViewport(0, 0, width, height)
         
-        // Video is always Landscape (3840x2160)
+        // Video is always Landscape (3840x2160 = 16:9)
         val videoWidth = 3840f
         val videoHeight = 2160f
+        val videoAspect = videoWidth / videoHeight  // 16:9 = 1.777...
         
-        // After rotating 90 degrees, effective dimensions are swapped
-        val rotatedVideoAspect = videoHeight / videoWidth  // 2160/3840
+        // After rotating 90 degrees for portrait display
+        // The video becomes 9:16 (tall)
+        val rotatedVideoAspect = videoHeight / videoWidth  // 9:16 = 0.5625
         val screenAspect = width.toFloat() / height.toFloat()
         
         var scaleX = 1f
         var scaleY = 1f
         
-        // Center crop logic: scale to fill screen
-        if (screenAspect < rotatedVideoAspect) {
-            // Screen is narrower (typical portrait phone)
-            // Scale up to fill width
-            scaleY = rotatedVideoAspect / screenAspect
-        } else {
-            // Screen is wider
+        // FIT mode - maintain aspect ratio, add letterbox/pillarbox if needed
+        if (screenAspect > rotatedVideoAspect) {
+            // Screen is wider than video (e.g., 9:18 screen vs 9:16 video)
+            // Fit to height, add black bars on sides
             scaleX = screenAspect / rotatedVideoAspect
+        } else {
+            // Screen is narrower than video (e.g., 9:21 screen vs 9:16 video) 
+            // Fit to width, add black bars on top/bottom
+            scaleY = rotatedVideoAspect / screenAspect
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0)
         
-        // Apply rotation FIRST
+        // Apply rotation first (90 degrees for portrait)
         Matrix.rotateM(mMVPMatrix, 0, 90f, 0f, 0f, 1f)
         
-        // Then scale (in the rotated coordinate system)
-        Matrix.scaleM(mMVPMatrix, 0, scaleX, scaleY, 1f)
+        // Then scale to fit (inverse scale to shrink into view)
+        Matrix.scaleM(mMVPMatrix, 0, 1f / scaleX, 1f / scaleY, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
