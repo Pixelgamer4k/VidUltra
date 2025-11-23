@@ -109,35 +109,30 @@ class FocusPeakingRenderer(
         val videoWidth = 3840f
         val videoHeight = 2160f
         
-        // We need to rotate the video 90 degrees to fit portrait screen
-        // So effective video aspect becomes 2160/3840
-        val rotatedVideoAspect = videoHeight / videoWidth
+        // After rotating 90 degrees, effective dimensions are swapped
+        val rotatedVideoAspect = videoHeight / videoWidth  // 2160/3840
         val screenAspect = width.toFloat() / height.toFloat()
         
         var scaleX = 1f
         var scaleY = 1f
         
+        // Center crop logic: scale to fill screen
         if (screenAspect < rotatedVideoAspect) {
-            // Screen is taller/thinner than video (e.g. 9:21 vs 9:16)
-            // We need to scale up the video to cover the screen height
-            // Since we are rotating, the Quad's X becomes Screen Y, Quad's Y becomes Screen X
-            
-            // To fill height (Screen Y), we scale Quad X
-            scaleX = rotatedVideoAspect / screenAspect
-            scaleY = 1f
+            // Screen is narrower (typical portrait phone)
+            // Scale up to fill width
+            scaleY = rotatedVideoAspect / screenAspect
         } else {
             // Screen is wider
-            scaleX = 1f
-            scaleY = screenAspect / rotatedVideoAspect
+            scaleX = screenAspect / rotatedVideoAspect
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0)
         
-        // 1. Scale to correct aspect ratio
-        Matrix.scaleM(mMVPMatrix, 0, scaleX, scaleY, 1f)
-        
-        // 2. Rotate to match orientation (90 degrees for Portrait)
+        // Apply rotation FIRST
         Matrix.rotateM(mMVPMatrix, 0, 90f, 0f, 0f, 1f)
+        
+        // Then scale (in the rotated coordinate system)
+        Matrix.scaleM(mMVPMatrix, 0, scaleX, scaleY, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
