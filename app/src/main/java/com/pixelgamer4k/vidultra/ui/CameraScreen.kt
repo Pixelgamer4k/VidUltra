@@ -2,50 +2,38 @@ package com.pixelgamer4k.vidultra.ui
 
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.pixelgamer4k.vidultra.R
 import com.pixelgamer4k.vidultra.core.Camera2Api
+import com.pixelgamer4k.vidultra.ui.components.*
 
-// Colors
 val Gold = Color(0xFFFFD700)
-val DarkPanel = Color(0xCC000000)
-val RedRec = Color(0xFFD32F2F)
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val permissionState = rememberMultiplePermissionsState(
@@ -54,6 +42,8 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val cameraState = cameraViewModel.state.collectAsState().value
     val bitDepth = cameraViewModel.bitDepth.collectAsState().value
     val supports10Bit = cameraViewModel.supports10Bit.collectAsState().value
+    
+    var activeControl by remember { mutableStateOf<String?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (permissionState.allPermissionsGranted) {
@@ -71,11 +61,13 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
                 modifier = Modifier.fillMaxSize()
             )
             
-            // Supreme UI Overlay
-            SupremeOverlay(
+            // Premium UI Overlay
+            PremiumCameraOverlay(
                 isRecording = cameraState is Camera2Api.CameraState.Recording,
                 bitDepth = bitDepth,
                 supports10Bit = supports10Bit,
+                activeControl = activeControl,
+                onActiveControlChange = { activeControl = it },
                 onRecord = { if (it) cameraViewModel.stopRecording() else cameraViewModel.startRecording() },
                 onIsoChange = { cameraViewModel.setIso(it.toInt()) },
                 onShutterChange = { cameraViewModel.setExposure(it.toLong()) },
@@ -88,459 +80,299 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     }
 }
 
-
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun SupremeOverlay(
+fun PremiumCameraOverlay(
     isRecording: Boolean,
     bitDepth: Int,
     supports10Bit: Boolean,
+    activeControl: String?,
+    onActiveControlChange: (String?) -> Unit,
     onRecord: (Boolean) -> Unit,
     onIsoChange: (Float) -> Unit,
     onShutterChange: (Float) -> Unit,
     onFocusChange: (Float) -> Unit,
     onBitDepthChange: (Int) -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var activeControl by remember { mutableStateOf<String?>(null) }
-    
-    // Animation for recording transparency (only for non-essential UI)
-    val uiAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isRecording) 0.3f else 1f,
-        label = "uiAlpha"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         
-        // --- LEFT SIDE: Settings & Histogram ---
+        // TOP LEFT: Info Badges
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .width(140.dp)
-                .padding(top = 16.dp)
-                .alpha(uiAlpha), // Fade during recording
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Histogram
-            Box(
-                modifier = Modifier
-                    .size(140.dp, 80.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                    .border(1.dp, Gold, RoundedCornerShape(12.dp))
-                    .clip(RoundedCornerShape(12.dp))
-            ) {
-                HistogramGraph()
-            }
+            // Histogram placeholder
+            HistogramBadge()
             
-            // Settings Stack
-            SettingItem(label = "BITRATE", value = "${if (bitDepth == 10) 150 else 100} Mbps", color = Gold)
-            SettingItem(label = "CODEC", value = "HEVC", color = Gold)
+            // Bitrate
+            InfoBadge(
+                label = "BITRATE",
+                value = if (bitDepth == 10) "150 Mbps" else "100 Mbps"
+            )
             
-            // DEPTH with toggle button
+            // Codec
+            InfoBadge(
+                label = "CODEC",
+                value = "HEVC"
+            )
+            
+            // Bit depth with toggle
             Row(
-                modifier = Modifier
-                    .width(140.dp)
-                    .height(32.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 4.dp), // Reduced horizontal padding
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.clickable(enabled = supports10Bit) {
+                    onBitDepthChange(if (bitDepth == 8) 10 else 8)
+                },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier.widthIn(max = 70.dp) // Explicit max width to prevent compression
-                ) {
-                    Text("DEPTH", fontSize = 9.sp, color = Color.White.copy(0.6f))
-                    Text(
-                        "$bitDepth-bit", 
-                        fontSize = 10.sp, // Further reduced for safety
-                        color = if (bitDepth == 10) Gold else Color.Green, 
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Clip
-                    )
-                }
+                InfoBadge(
+                    label = "DEPTH",
+                    value = "$bitDepth-bit"
+                )
                 
-                // Toggle button (8-bit ⟷ 10-bit)
+                // Toggle indicator
                 Box(
                     modifier = Modifier
-                        .size(50.dp, 22.dp)
+                        .width(40.dp)
+                        .height(20.dp)
                         .background(
-                            if (bitDepth == 10) Gold.copy(alpha = 0.3f) else Color.White.copy(0.2f),
-                            RoundedCornerShape(11.dp)
-                        )
-                        .border(
-                            1.dp, 
-                            if (bitDepth == 10) Gold else Color.White.copy(0.4f),
-                            RoundedCornerShape(11.dp)
-                        )
-                        .clickable(enabled = supports10Bit) {
-                            onBitDepthChange(if (bitDepth == 8) 10 else 8)
-                        }
-                        .padding(2.dp),
+                            if (bitDepth == 10) Gold.copy(0.3f) else Color.White.copy(0.2f),
+                            RoundedCornerShape(10.dp)
+                        ),
                     contentAlignment = if (bitDepth == 10) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(18.dp)
-                            .background(if (bitDepth == 10) Gold else Color.White, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            if (bitDepth == 10) "10" else "8",
-                            fontSize = 8.sp,
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-
-            
-            // LOG Placeholder (for future log profile implementation)
-            Row(
-                modifier = Modifier
-                    .width(140.dp)
-                    .height(32.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("LOG", fontSize = 9.sp, color = Color.White.copy(0.6f))
-                Text("REC2020", fontSize = 13.sp, color = Gold, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // --- RIGHT SIDE: Shutter Button ---
-        Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(90.dp)
-                    .border(3.dp, Gold, CircleShape)
-                    .padding(6.dp)
-                    .clip(CircleShape)
-                    .background(if (isRecording) RedRec else RedRec.copy(alpha = 0.8f))
-                    .clickable { onRecord(isRecording) }
-            )
-        }
-
-        // --- TOP RIGHT: Icons ---
-        Row(
-            modifier = Modifier.align(Alignment.TopEnd).alpha(uiAlpha),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Gallery Icon (opens Google Photos)
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                    .border(1.dp, Color.White.copy(0.2f), CircleShape)
-                    .clickable {
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                            type = "video/*"
-                            setPackage("com.google.android.apps.photos")
-                        }
-                        try {
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                type = "video/*"
-                            }
-                            context.startActivity(fallbackIntent)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                // Draw custom gallery icon - minimalist grid
-                Canvas(modifier = Modifier.size(24.dp)) {
-                    val iconSize = size.width
-                    val gridSize = 9.dp.toPx() // Size of each grid square
-                    val gap = 2.dp.toPx() // Gap between squares
-                    val cornerRadius = 1.5.dp.toPx()
-                    
-                    // 2x2 grid of rounded rectangles
-                    for (row in 0..1) {
-                        for (col in 0..1) {
-                            val x = (iconSize - gridSize * 2 - gap) / 2 + col * (gridSize + gap)
-                            val y = (iconSize - gridSize * 2 - gap) / 2 + row * (gridSize + gap)
-                            
-                            drawRoundRect(
-                                color = Color.White,
-                                topLeft = Offset(x, y),
-                                size = androidx.compose.ui.geometry.Size(gridSize, gridSize),
-                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
+                            .size(16.dp)
+                            .background(
+                                if (bitDepth == 10) Gold else Color.White,
+                                CircleShape
                             )
-                        }
-                    }
-                }
-            }
-            CircleIcon("R")
-            CircleIcon("S")
-        }
-
-
-        // --- BOTTOM CENTER: Slider/Picker Popup ---
-        AnimatedVisibility(
-            visible = activeControl != null,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp),
-            enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + 
-                    androidx.compose.animation.slideInVertically(
-                        animationSpec = androidx.compose.animation.core.spring(
-                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-                        )
-                    ) { it / 2 } +
-                    androidx.compose.animation.scaleIn(
-                        initialScale = 0.8f,
-                        animationSpec = androidx.compose.animation.core.spring(
-                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-                        )
-                    ),
-            exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) + 
-                   androidx.compose.animation.slideOutVertically { it / 2 } +
-                   androidx.compose.animation.scaleOut(targetScale = 0.8f)
-        ) {
-            when (activeControl) {
-                "ISO" -> {
-                    // ISO Slider (starts at current auto value)
-                    var sliderValue by remember { mutableFloatStateOf(400f) }
-                    
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 40.dp)
-                            .fillMaxWidth(0.8f)
-                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("ISO: ${sliderValue.toInt()}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Slider(
-                            value = sliderValue,
-                            onValueChange = { 
-                                sliderValue = it
-                                onIsoChange(it)
-                            },
-                            valueRange = 100f..3200f,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Gold,
-                                activeTrackColor = Gold,
-                                inactiveTrackColor = Color.White.copy(0.3f)
-                            )
-                        )
-                    }
-                }
-                "S" -> {
-                    // Shutter Speed Picker
-                    val shutterSpeeds = listOf(
-                        "1/30", "1/60", "1/125", "1/250", "1/500", "1/1000", "1/2000", "1/4000", "1/8000"
                     )
-                    var selectedIndex by remember { mutableStateOf(2) }
-                    
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 40.dp)
-                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Shutter Speed", color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(Color.White.copy(0.1f), CircleShape)
-                                    .clickable { 
-                                        if (selectedIndex > 0) {
-                                            selectedIndex--
-                                            val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
-                                            onShutterChange(1000000000f / speed)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("◄", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(modifier = Modifier.width(32.dp))
-                            Text("${shutterSpeeds[selectedIndex]}s", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.width(32.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(Color.White.copy(0.1f), CircleShape)
-                                    .clickable { 
-                                        if (selectedIndex < shutterSpeeds.size - 1) {
-                                            selectedIndex++
-                                            val speed = shutterSpeeds[selectedIndex].substringAfter("/").toFloat()
-                                            onShutterChange(1000000000f / speed)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("►", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-                "F" -> {
-                    // Focus Slider
-                    var sliderValue by remember { mutableFloatStateOf(5f) }
-                    
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 40.dp)
-                            .fillMaxWidth(0.8f)
-                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                            .border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Focus: ${"%.1f".format(sliderValue)}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Slider(
-                            value = sliderValue,
-                            onValueChange = { 
-                                sliderValue = it
-                                onFocusChange(it)
-                            },
-                            valueRange = 0f..10f,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Gold,
-                                activeTrackColor = Gold,
-                                inactiveTrackColor = Color.White.copy(0.3f)
-                            )
-                        )
-                    }
                 }
             }
         }
         
-        // --- BOTTOM CENTER: Control Dock (Truly Centered) ---
+        // TOP RIGHT: Icon Buttons
         Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Gallery
+            GlassPillIconButton(
+                onClick = { /* TODO */ },
+                icon = "🖼️"
+            )
+            
+            // Grid
+            GlassPillIconButton(
+                onClick = { /* TODO */ },
+                icon = "⊞"
+            )
+            
+            // Settings
+            GlassPillIconButton(
+                onClick = { /* TODO */ },
+                icon = "⚙️"
+            )
+            
+            // Lock
+            GlassPillIconButton(
+                onClick = { /* TODO */ },
+                icon = "🔒"
+            )
+        }
+        
+        // BOTTOM CENTER: Manual Controls Bar
+        AnimatedVisibility(
+            visible = activeControl == null,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 8.dp)
-                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                .border(2.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
-                .padding(vertical = 6.dp, horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(bottom = 100.dp)
         ) {
-            ControlToggle("ISO", activeControl == "ISO", size = 36.dp) { 
-                activeControl = if (activeControl == "ISO") null else "ISO" 
-            }
-            ControlToggle("S", activeControl == "S", size = 36.dp) { 
-                activeControl = if (activeControl == "S") null else "S" 
-            }
-            ControlToggle("F", activeControl == "F", size = 36.dp) { 
-                activeControl = if (activeControl == "F") null else "F" 
+            GlassPill(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(70.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // ISO
+                    ControlButton(
+                        label = "ISO",
+                        onClick = { onActiveControlChange("ISO") }
+                    )
+                    
+                    // Shutter (S)
+                    ControlButton(
+                        label = "S",
+                        subtitle = "1/50",
+                        onClick = { onActiveControlChange("SHUTTER") }
+                    )
+                    
+                    // Focus (F)
+                    ControlButton(
+                        label = "F",
+                        onClick = { onActiveControlChange("FOCUS") }
+                    )
+                    
+                    // Shutter icon (aesthetic)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("◉", fontSize = 24.sp, color = Color.Black)
+                    }
+                }
             }
         }
         
-        // --- BOTTOM RIGHT: Format Indicator (Separate from dock) ---
+        // DIAL OVERLAYS
+        AnimatedVisibility(
+            visible = activeControl == "ISO",
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 120.dp)
+        ) {
+            DialControl(
+                label = "ISO",
+                currentValue = "400",
+                minValue = 100,
+                maxValue = 3200,
+                onValueChange = onIsoChange,
+                onDismiss = { onActiveControlChange(null) }
+            )
+        }
+        
+        AnimatedVisibility(
+            visible = activeControl == "SHUTTER",
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 120.dp)
+        ) {
+            DialControl(
+                label = "SHUTTER",
+                currentValue = "1/50",
+                minValue = 1,
+                maxValue = 8000,
+                onValueChange = onShutterChange,
+                onDismiss = { onActiveControlChange(null) }
+            )
+        }
+        
+        AnimatedVisibility(
+            visible = activeControl == "FOCUS",
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 120.dp)
+        ) {
+            DialControl(
+                label = "FOCUS",
+                currentValue = "∞",
+                minValue = 0,
+                maxValue = 100,
+                onValueChange = onFocusChange,
+                onDismiss = { onActiveControlChange(null) }
+            )
+        }
+        
+        // BOTTOM: Record Button
         Box(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 16.dp)
-                .background(Gold, RoundedCornerShape(10.dp))
-                .border(1.dp, Color.Black.copy(0.2f), RoundedCornerShape(10.dp))
-                .padding(horizontal = 12.dp, vertical = 5.dp)
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp)
         ) {
-            Text("4K 30", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+            RecordButton(
+                isRecording = isRecording,
+                onClick = { onRecord(isRecording) }
+            )
         }
     }
 }
 
 @Composable
-fun ControlToggle(text: String, isActive: Boolean, size: androidx.compose.ui.unit.Dp = 44.dp, onClick: () -> Unit) {
+fun GlassPillIconButton(
+    onClick: () -> Unit,
+    icon: String
+) {
     Box(
         modifier = Modifier
-            .size(size)
-            .background(if (isActive) Gold else Color.Black.copy(alpha = 0.6f), CircleShape)
-            .border(1.dp, if (isActive) Gold else Color.White.copy(0.2f), CircleShape)
+            .size(48.dp)
+            .background(
+                Color.Black.copy(0.6f),
+                CircleShape
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
+    ) {
+        Text(icon, fontSize = 20.sp)
+    }
+}
+
+@Composable
+fun ControlButton(
+    label: String,
+    subtitle: String? = null,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
-            text, 
-            color = if (isActive) Color.Black else Color.White, 
-            fontSize = (size.value * 0.32).sp,
+            label,
+            fontSize = 18.sp,
+            color = Color.White,
             fontWeight = FontWeight.Bold
         )
+        if (subtitle != null) {
+            Text(
+                subtitle,
+                fontSize = 10.sp,
+                color = Gold
+            )
+        }
     }
 }
 
 @Composable
-fun SettingItem(label: String, value: String, color: Color) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-            .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-    }
-}
-
-@Composable
-fun CircleIcon(text: String, onClick: () -> Unit = {}) {
+fun RecordButton(
+    isRecording: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isRecording) 0.9f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
+    
     Box(
         modifier = Modifier
-            .size(44.dp)
-            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-            .border(1.dp, Color.White.copy(0.2f), CircleShape)
+            .size(80.dp)
+            .scale(scale)
+            .background(
+                if (isRecording) Color.Red else Color.White,
+                CircleShape
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun HistogramGraph() {
-    Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-        val path = Path()
-        path.moveTo(0f, size.height)
-        // Mock curve
-        path.cubicTo(
-            size.width * 0.2f, size.height,
-            size.width * 0.4f, size.height * 0.2f,
-            size.width * 0.6f, size.height * 0.5f
-        )
-        path.cubicTo(
-            size.width * 0.8f, size.height * 0.8f,
-            size.width, size.height,
-            size.width, size.height
-        )
-        path.lineTo(0f, size.height)
-        path.close()
-        
-        drawPath(
-            path = path,
-            brush = Brush.verticalGradient(
-                colors = listOf(Gold, Gold.copy(alpha = 0.1f))
+        if (isRecording) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(Color.White, RoundedCornerShape(4.dp))
             )
-        )
-        drawPath(
-            path = path,
-            color = Gold,
-            style = Stroke(width = 2f)
-        )
+        }
     }
 }
