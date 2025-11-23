@@ -45,17 +45,6 @@ class VideoEncoder(
      */
     fun prepare() {
         try {
-            // Check encoder capabilities first
-            val codecInfo = MediaCodecList(MediaCodecList.REGULAR_CODECS).findEncoderForFormat(
-                MediaFormat.createVideoFormat(MIME_TYPE, width, height)
-            )
-            
-            if (codecInfo != null) {
-                Log.i(TAG, "Using encoder: ${codecInfo.name}")
-                val capabilities = codecInfo.getCapabilitiesForType(MIME_TYPE)
-                Log.i(TAG, "Encoder capabilities: ${capabilities.colorFormats.joinToString()}")
-            }
-            
             // Create MediaFormat
             val format = MediaFormat.createVideoFormat(MIME_TYPE, width, height)
             
