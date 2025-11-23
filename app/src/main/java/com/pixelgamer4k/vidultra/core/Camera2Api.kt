@@ -301,6 +301,10 @@ class Camera2Api(private val context: Context) {
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
         
+        // Use REC709 preset curve for neutral, flat look (disables aggressive stock tone mapping)
+        builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_PRESET_CURVE)
+        builder.set(CaptureRequest.TONEMAP_PRESET_CURVE, CameraMetadata.TONEMAP_PRESET_CURVE_REC709)
+        
         // Disable edge enhancement for soft, cinematic look
         builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF)
         
