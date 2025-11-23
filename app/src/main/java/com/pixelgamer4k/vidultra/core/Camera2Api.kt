@@ -3,7 +3,11 @@ package com.pixelgamer4k.vidultra.core
 import android.annotation.SuppressLint
 import android.content.Context
 import android.hardware.camera2.*
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.media.MediaFormat
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
@@ -48,6 +52,18 @@ class Camera2Api(private val context: Context) {
     var iso: Int? = null
     var exposure: Long? = null
     var focus: Float? = null
+    
+    // Bit Depth
+    private var bitDepth: Int = 8
+    private var _supports10Bit: Boolean? = null
+    
+    val supports10Bit: Boolean
+        get() {
+            if (_supports10Bit == null) {
+                _supports10Bit = check10BitSupport()
+            }
+            return _supports10Bit ?: false
+        }
 
     sealed class CameraState {
         object Closed : CameraState()
@@ -237,7 +253,22 @@ class Camera2Api(private val context: Context) {
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setOutputFile(fileDescriptor)
-            setVideoEncodingBitRate(100_000_000)
+            
+            // Configure bitrate and profile based on bit depth
+            if (bitDepth == 10 && supports10Bit) {
+                setVideoEncodingBitRate(150_000_000) // Higher bitrate for 10-bit
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    setVideoEncodingProfileLevel(
+                        MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10,
+                        MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel51
+                    )
+                }
+                Log.i(TAG, "Recording configured for 10-bit HEVC @ 150Mbps")
+            } else {
+                setVideoEncodingBitRate(100_000_000) // Standard bitrate for 8-bit
+                Log.i(TAG, "Recording configured for 8-bit HEVC @ 100Mbps")
+            }
+            
             setVideoFrameRate(30)
             setVideoSize(3840, 2160)
             setVideoEncoder(MediaRecorder.VideoEncoder.HEVC)
@@ -283,6 +314,33 @@ class Camera2Api(private val context: Context) {
             builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, focus)
         } else {
             builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+        }
+    }
+
+    // 10-bit Support
+    fun setBitDepth(depth: Int) {
+        if (depth == 10 && !supports10Bit) {
+            Log.w(TAG, "10-bit not supported, staying at 8-bit")
+            return
+        }
+        bitDepth = depth
+    }
+    
+    fun getBitDepth(): Int = bitDepth
+    
+    private fun check10BitSupport(): Boolean {
+        return try {
+            val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+            codecList.codecInfos.any { codecInfo ->
+                codecInfo.supportedTypes.contains(MediaFormat.MIMETYPE_VIDEO_HEVC) &&
+                codecInfo.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_HEVC)
+                    .profileLevels.any { 
+                        it.profile == MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10 
+                    }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking 10-bit support", e)
+            false
         }
     }
 

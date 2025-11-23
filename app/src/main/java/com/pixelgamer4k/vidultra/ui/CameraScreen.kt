@@ -51,12 +51,15 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     val permissionState = rememberMultiplePermissionsState(
         listOf(android.Manifest.permission.CAMERA, android.Manifest.permission.RECORD_AUDIO)
     )
-    val cameraState by viewModel.state.collectAsState()
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraState = viewModel.state.collectAsState().value
+    val bitDepth = viewModel.bitDepth.collectAsState().value
+    val supports10Bit = viewModel.supports10Bit.collectAsState().value
 
-    DisposableEffect(lifecycleOwner) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(Unit) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && permissionState.allPermissionsGranted) { }
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.start()
+            if (event == Lifecycle.Event.ON_PAUSE) viewModel.stop()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -81,10 +84,13 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             // Supreme UI Overlay
             SupremeOverlay(
                 isRecording = cameraState is Camera2Api.CameraState.Recording,
+                bitDepth = bitDepth,
+                supports10Bit = supports10Bit,
                 onRecord = { if (it) viewModel.stopRecording() else viewModel.startRecording() },
                 onIsoChange = { viewModel.setIso(it.toInt()) },
                 onShutterChange = { viewModel.setExposure(it.toLong()) },
-                onFocusChange = { viewModel.setFocus(it) }
+                onFocusChange = { viewModel.setFocus(it) },
+                onBitDepthChange = { viewModel.setBitDepth(it) }
             )
         } else {
             LaunchedEffect(Unit) { permissionState.launchMultiplePermissionRequest() }
@@ -92,13 +98,17 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     }
 }
 
+
 @Composable
 fun SupremeOverlay(
     isRecording: Boolean,
+    bitDepth: Int,
+    supports10Bit: Boolean,
     onRecord: (Boolean) -> Unit,
     onIsoChange: (Float) -> Unit,
     onShutterChange: (Float) -> Unit,
-    onFocusChange: (Float) -> Unit
+    onFocusChange: (Float) -> Unit,
+    onBitDepthChange: (Int) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var activeControl by remember { mutableStateOf<String?>(null) }
@@ -137,9 +147,59 @@ fun SupremeOverlay(
             }
             
             // Settings Stack
-            SettingItem(label = "BITRATE", value = "100 Mbps", color = Gold)
+            SettingItem(label = "BITRATE", value = "${if (bitDepth == 10) 150 else 100} Mbps", color = Gold)
             SettingItem(label = "CODEC", value = "HEVC", color = Gold)
-            SettingItem(label = "DEPTH", value = "8-bit", color = Color.Green)
+            
+            // DEPTH with toggle button
+            Row(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(32.dp)
+                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("DEPTH", fontSize = 9.sp, color = Color.White.copy(0.6f))
+                    Text("$bitDepth-bit", fontSize = 13.sp, color = if (bitDepth == 10) Gold else Color.Green, fontWeight = FontWeight.Bold)
+                }
+                
+                // Toggle button (8-bit ⟷ 10-bit)
+                Box(
+                    modifier = Modifier
+                        .size(50.dp, 22.dp)
+                        .background(
+                            if (bitDepth == 10) Gold.copy(alpha = 0.3f) else Color.White.copy(0.2f),
+                            RoundedCornerShape(11.dp)
+                        )
+                        .border(
+                            1.dp, 
+                            if (bitDepth == 10) Gold else Color.White.copy(0.4f),
+                            RoundedCornerShape(11.dp)
+                        )
+                        .clickable(enabled = supports10Bit) {
+                            onBitDepthChange(if (bitDepth == 8) 10 else 8)
+                        }
+                        .padding(2.dp),
+                    contentAlignment = if (bitDepth == 10) Alignment.CenterEnd else Alignment.CenterStart
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .background(if (bitDepth == 10) Gold else Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            if (bitDepth == 10) "10" else "8",
+                            fontSize = 8.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            
             SettingItem(label = "LOG", value = "OFF", color = Color.White)
         }
 
