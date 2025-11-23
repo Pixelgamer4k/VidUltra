@@ -113,18 +113,25 @@ class FocusPeakingRenderer(
         GLES20.glViewport(0, 0, width, height)
         
         // Calculate aspect ratios
-        val videoAspect = videoWidth / videoHeight  // e.g., 16/9 for landscape
-        val rotatedVideoAspect = 1f / videoAspect  // e.g., 9/16 after rotation
-        val screenAspect = width.toFloat() / height.toFloat()
+        val cameraAspect = videoWidth / videoHeight
+        val viewAspect = width.toFloat() / height.toFloat()
         
-        // Scale to fill screen height - invert to scale UP
-        val scale = screenAspect / rotatedVideoAspect
+        var scaleX = 1f
+        var scaleY = 1f
+        
+        // Fill screen mode - scale to fill, crop what doesn't fit
+        if (cameraAspect > viewAspect) {
+            // Camera is wider than view - fill width, crop height
+            scaleY = cameraAspect / viewAspect
+        } else {
+            // Camera is taller than view - fill height, crop width
+            scaleX = viewAspect / cameraAspect
+        }
         
         Matrix.setIdentityM(mMVPMatrix, 0)
-        // Rotate 90 degrees
-        Matrix.rotateM(mMVPMatrix, 0, 90f, 0f, 0f, 1f)
-        // Scale to fill height
-        Matrix.scaleM(mMVPMatrix, 0, 1f / scale, 1f / scale, 1f)
+        // NO manual rotation - SurfaceTexture matrix handles orientation
+        // Just scale to fill screen
+        Matrix.scaleM(mMVPMatrix, 0, scaleX, scaleY, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
