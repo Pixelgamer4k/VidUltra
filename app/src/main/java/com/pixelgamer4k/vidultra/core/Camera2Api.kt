@@ -301,9 +301,17 @@ class Camera2Api(private val context: Context) {
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
         
-        // Use REC709 preset curve for neutral, flat look (disables aggressive stock tone mapping)
-        builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_PRESET_CURVE)
-        builder.set(CaptureRequest.TONEMAP_PRESET_CURVE, CameraMetadata.TONEMAP_PRESET_CURVE_REC709)
+        // Use LINEAR 1:1 tone curve for completely flat, neutral look
+        // This disables all tone mapping processing for natural, desaturated colors
+        builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_CONTRAST_CURVE)
+        
+        // Linear curve (input = output, no processing)
+        val linearCurve = android.hardware.camera2.params.TonemapCurve(
+            floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f), // Red: straight line
+            floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f), // Green: straight line
+            floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f)  // Blue: straight line
+        )
+        builder.set(CaptureRequest.TONEMAP_CURVE, linearCurve)
         
         // Disable edge enhancement for soft, cinematic look
         builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF)
