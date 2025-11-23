@@ -75,7 +75,7 @@ class Camera2Api(private val context: Context) {
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
                 ?: return Resolution.ALL_PRESETS
             
-            val sizes = map.getOutputSizes(MediaFormat.MIMETYPE_VIDEO_HEVC)
+            val sizes = map.getOutputSizes(android.media.MediaRecorder::class.java)
             val supported = mutableListOf<Resolution>()
             
             // Check which presets are supported

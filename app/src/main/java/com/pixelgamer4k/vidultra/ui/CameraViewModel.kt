@@ -22,19 +22,19 @@ class CameraViewModel(application: Application) : AndroidViewModel(application) 
     private val _supports10Bit = MutableStateFlow(false)
     val supports10Bit: StateFlow<Boolean> = _supports10Bit.asStateFlow()
     
-    init {
-        api.start()
-        _supports10Bit.value = api.supports10Bit
-        _availableResolutions.value = api.getSupportedResolutions()
-        _selectedResolution.value = api.getSelectedResolution()
-    }
-    
     // Resolution State
     private val _availableResolutions = MutableStateFlow<List<Resolution>>(emptyList())
     val availableResolutions: StateFlow<List<Resolution>> = _availableResolutions.asStateFlow()
     
     private val _selectedResolution = MutableStateFlow<Resolution>(Resolution.PRESET_4K_16_9)
     val selectedResolution: StateFlow<Resolution> = _selectedResolution.asStateFlow()
+    
+    init {
+        api.start()
+        _supports10Bit.value = api.supports10Bit
+        _availableResolutions.value = api.getSupportedResolutions()
+        _selectedResolution.value = api.getSelectedResolution()
+    }
     
     fun selectResolution(resolution: Resolution) {
         api.setResolution(resolution)

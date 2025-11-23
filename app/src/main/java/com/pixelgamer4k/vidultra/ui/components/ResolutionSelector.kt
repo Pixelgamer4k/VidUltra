@@ -31,7 +31,7 @@ fun ResolutionSelector(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = \"Select Resolution\",
+                text = "Select Resolution",
                 color = Color.White,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -76,7 +76,7 @@ fun ResolutionOption(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = \"${resolution.width} x ${resolution.height} @ ${resolution.fps}fps\",
+                text = "${resolution.width} x ${resolution.height} @ ${resolution.fps}fps",
                 color = if (isSelected) VidUltraYellow.copy(0.8f) else Color.Gray,
                 fontSize = 13.sp
             )
