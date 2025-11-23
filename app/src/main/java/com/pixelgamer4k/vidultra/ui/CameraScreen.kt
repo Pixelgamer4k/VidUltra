@@ -55,15 +55,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     val bitDepth = viewModel.bitDepth.collectAsState().value
     val supports10Bit = viewModel.supports10Bit.collectAsState().value
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(Unit) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.start()
-            if (event == Lifecycle.Event.ON_PAUSE) viewModel.stop()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (permissionState.allPermissionsGranted) {
