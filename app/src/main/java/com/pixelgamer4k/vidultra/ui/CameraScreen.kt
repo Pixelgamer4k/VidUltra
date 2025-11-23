@@ -2,6 +2,8 @@ package com.pixelgamer4k.vidultra.ui
 
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.Surface
+import android.opengl.GLSurfaceView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -28,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.pixelgamer4k.vidultra.core.Camera2Api
+import com.pixelgamer4k.vidultra.core.renderer.FocusPeakingRenderer
 import com.pixelgamer4k.vidultra.ui.components.*
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalAnimationApi::class)
@@ -41,19 +44,36 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val supports10Bit = cameraViewModel.supports10Bit.collectAsState().value
     
     var activeControl by remember { mutableStateOf<String?>(null) }
+    var peakingEnabled by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (permissionState.allPermissionsGranted) {
             // Full Screen Preview
+            val renderer = remember {
+                FocusPeakingRenderer { surfaceTexture ->
+                    val surface = Surface(surfaceTexture)
+                    cameraViewModel.onSurfaceReady(surface)
+                }
+            }
+            
+            DisposableEffect(Unit) {
+                onDispose {
+                    cameraViewModel.onSurfaceDestroyed()
+                }
+            }
+
             AndroidView(
                 factory = { ctx ->
-                    SurfaceView(ctx).apply {
-                        holder.addCallback(object : SurfaceHolder.Callback {
-                            override fun surfaceCreated(holder: SurfaceHolder) = cameraViewModel.onSurfaceReady(holder.surface)
-                            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
-                            override fun surfaceDestroyed(holder: SurfaceHolder) = cameraViewModel.onSurfaceDestroyed()
-                        })
+                    GLSurfaceView(ctx).apply {
+                        setEGLContextClientVersion(2)
+                        setRenderer(renderer)
+                        renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+                        renderer.requestRender = { requestRender() }
                     }
+                },
+                update = {
+                    renderer.isPeakingEnabled = peakingEnabled
+                    it.requestRender()
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -69,7 +89,9 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
                 onIsoChange = { cameraViewModel.setIso(it) },
                 onShutterChange = { cameraViewModel.setExposure(it.toLong()) },
                 onFocusChange = { cameraViewModel.setFocus(it.toFloat()) },
-                onBitDepthChange = { cameraViewModel.setBitDepth(it) }
+                onBitDepthChange = { cameraViewModel.setBitDepth(it) },
+                peakingEnabled = peakingEnabled,
+                onPeakingToggle = { peakingEnabled = !peakingEnabled }
             )
         } else {
             LaunchedEffect(Unit) { permissionState.launchMultiplePermissionRequest() }
@@ -89,7 +111,9 @@ fun ExactPremiumOverlay(
     onIsoChange: (Int) -> Unit,
     onShutterChange: (Int) -> Unit,
     onFocusChange: (Int) -> Unit,
-    onBitDepthChange: (Int) -> Unit
+    onBitDepthChange: (Int) -> Unit,
+    peakingEnabled: Boolean,
+    onPeakingToggle: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         
@@ -138,6 +162,11 @@ fun ExactPremiumOverlay(
         ) {
             CircularIconButton(icon = Icons.Default.Face) // Gallery
             CircularIconButton(icon = Icons.Default.List) // Grid
+            CircularIconButton(
+                icon = Icons.Default.Visibility, 
+                isActive = peakingEnabled,
+                onClick = onPeakingToggle
+            ) // Peaking
             CircularIconButton(icon = Icons.Default.Settings) // Settings
             CircularIconButton(icon = Icons.Default.Lock) // Lock
         }
@@ -265,18 +294,26 @@ fun ExactPremiumOverlay(
 }
 
 @Composable
-fun CircularIconButton(icon: ImageVector) {
+fun CircularIconButton(
+    icon: ImageVector, 
+    isActive: Boolean = false,
+    onClick: () -> Unit = {}
+) {
     Box(
         modifier = Modifier
             .size(48.dp)
-            .background(Color(0xFF2A2A2A).copy(0.9f), CircleShape)
-            .border(1.dp, Color.White.copy(0.1f), CircleShape),
+            .background(
+                if (isActive) VidUltraYellow else Color(0xFF2A2A2A).copy(0.9f), 
+                CircleShape
+            )
+            .border(1.dp, if (isActive) VidUltraYellow else Color.White.copy(0.1f), CircleShape)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White,
+            tint = if (isActive) Color.Black else Color.White,
             modifier = Modifier.size(22.dp)
         )
     }
