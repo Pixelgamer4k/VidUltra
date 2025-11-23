@@ -301,6 +301,15 @@ class Camera2Api(private val context: Context) {
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
         
+        // Disable edge enhancement for soft, cinematic look
+        builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF)
+        
+        // Minimal noise reduction for natural grain/film look
+        builder.set(CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_MINIMAL)
+        
+        // Disable video stabilization for more organic movement
+        builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
+        
         if (iso != null || exposure != null) {
             builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
             iso?.let { builder.set(CaptureRequest.SENSOR_SENSITIVITY, it) }
