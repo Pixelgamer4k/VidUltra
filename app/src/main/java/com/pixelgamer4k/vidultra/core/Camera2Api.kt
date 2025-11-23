@@ -301,11 +301,6 @@ class Camera2Api(private val context: Context) {
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
         
-        // FreeDcam approach: Use GAMMA_VALUE mode instead of aggressive tone curves
-        // This gives natural, neutral colors without artificial processing
-        builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
-        builder.set(CaptureRequest.TONEMAP_GAMMA, 2.2f) // Standard gamma for natural look
-        
         // Disable edge enhancement for soft, cinematic look
         builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF)
         
