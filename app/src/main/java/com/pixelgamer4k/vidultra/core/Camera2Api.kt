@@ -298,17 +298,54 @@ class Camera2Api(private val context: Context) {
     fun setManualFocus(value: Float) { focus = value; applySettings(); updatePreview() }
     fun setAuto() { iso = null; exposure = null; focus = null; applySettings(); updatePreview() }
 
+    // Tone Mapping Modes
+    // 0: FAST (Stock)
+    // 1: HIGH_QUALITY
+    // 2: FLAT (Linear 1:1)
+    // 3: GAMMA (2.2)
+    // 4: REC709 (Preset)
+    private var toneMapMode = 3 // Default to GAMMA (FreeDcam style)
+
+    fun setToneMapMode(mode: Int) {
+        toneMapMode = mode
+        applySettings()
+        updatePreview()
+    }
+    
+    fun getToneMapMode() = toneMapMode
+
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
         
-        // **TONE MAPPING FIX**
-        // 1. Force MANUAL capture intent to disable "smart" stock processing (HDR, scene optimization)
+        // **TONE MAPPING SELECTOR**
+        // Force MANUAL capture intent to disable "smart" stock processing (HDR, scene optimization)
         builder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CameraMetadata.CONTROL_CAPTURE_INTENT_MANUAL)
         
-        // 2. Use GAMMA 2.2 for standard, neutral brightness (fixes "dark linear" look)
-        // This overrides the dynamic stock tone curve with a fixed, predictable gamma
-        builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
-        builder.set(CaptureRequest.TONEMAP_GAMMA, 2.2f)
+        when (toneMapMode) {
+            0 -> { // FAST (Stock-ish but with Manual Intent)
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_FAST)
+            }
+            1 -> { // HIGH_QUALITY
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_HIGH_QUALITY)
+            }
+            2 -> { // FLAT (Linear 1:1)
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_CONTRAST_CURVE)
+                val linearCurve = android.hardware.camera2.params.TonemapCurve(
+                    floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f),
+                    floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f),
+                    floatArrayOf(0.0f, 0.0f, 1.0f, 1.0f)
+                )
+                builder.set(CaptureRequest.TONEMAP_CURVE, linearCurve)
+            }
+            3 -> { // GAMMA 2.2 (Default/Neutral)
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
+                builder.set(CaptureRequest.TONEMAP_GAMMA, 2.2f)
+            }
+            4 -> { // REC709 (Preset)
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_PRESET_CURVE)
+                builder.set(CaptureRequest.TONEMAP_PRESET_CURVE, CameraMetadata.TONEMAP_PRESET_CURVE_REC709)
+            }
+        }
         
         // 3. Disable enhancements for soft, cinematic look
         builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF) // No artificial sharpening
