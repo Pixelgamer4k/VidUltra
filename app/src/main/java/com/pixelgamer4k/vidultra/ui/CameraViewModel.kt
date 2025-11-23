@@ -32,25 +32,6 @@ class CameraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onSurfaceDestroyed() {
         api.stop()
-    }
-    
-    fun startRecording() = api.startRecording()
-    fun stopRecording() = api.stopRecording()
-    
-    fun setIso(iso: Int) = api.setManualIso(iso)
-    fun setExposure(exp: Long) = api.setManualExposure(exp)
-    fun setFocus(focus: Float) = api.setManualFocus(focus)
-    fun setAuto() = api.setAuto()
-    
-    // Bit Depth Control
-    fun setBitDepth(depth: Int) {
-        if (depth == 10 && !_supports10Bit.value) return
-        api.setBitDepth(depth)
-        _bitDepth.value = depth
-    }
-
-    override fun onCleared() {
-        super.onCleared()
         api.stop()
     }
 }
