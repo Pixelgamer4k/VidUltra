@@ -32,6 +32,36 @@ class CameraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onSurfaceDestroyed() {
         api.stop()
+    }
+    
+    fun startRecording() = api.startRecording()
+    fun stopRecording() = api.stopRecording()
+    
+    fun setIso(iso: Int) = api.setManualIso(iso)
+    fun setExposure(exp: Long) = api.setManualExposure(exp)
+    fun setFocus(focus: Float) = api.setManualFocus(focus)
+    fun setAuto() = api.setAuto()
+    
+    // Bit Depth Control
+    fun setBitDepth(depth: Int) {
+        if (depth == 10 && !_supports10Bit.value) return
+        api.setBitDepth(depth)
+        _bitDepth.value = depth
+    }
+
+    // Tone Mapping State
+    private val _toneMapMode = MutableStateFlow(3) // Default GAMMA
+    val toneMapMode: StateFlow<Int> = _toneMapMode.asStateFlow()
+    
+    fun cycleToneMapMode() {
+        val current = _toneMapMode.value
+        val next = (current + 1) % 5
+        api.setToneMapMode(next)
+        _toneMapMode.value = next
+    }
+
+    override fun onCleared() {
+        super.onCleared()
         api.stop()
     }
 }
