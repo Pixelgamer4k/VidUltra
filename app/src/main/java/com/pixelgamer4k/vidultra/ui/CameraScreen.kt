@@ -131,13 +131,13 @@ fun PremiumCameraOverlay(
             // Gallery
             IconButton(
                 onClick = { /* TODO */ },
-                icon = Icons.Default.Image
+                icon = Icons.Default.Face // Placeholder for Gallery
             )
             
             // Grid
             IconButton(
                 onClick = { /* TODO */ },
-                icon = Icons.Default.GridOn
+                icon = Icons.Default.List // Placeholder for Grid
             )
             
             // Settings
