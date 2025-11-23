@@ -202,7 +202,30 @@ fun SupremeOverlay(
 
 
             
-            SettingItem(label = "LOG", value = "OFF", color = Color.White)
+            // TONE Mapping Selector
+            val toneMapMode by viewModel.toneMapMode.collectAsState()
+            val toneModeName = when (toneMapMode) {
+                0 -> "FAST"
+                1 -> "HQ"
+                2 -> "FLAT"
+                3 -> "GAMMA"
+                4 -> "REC709"
+                else -> "UNK"
+            }
+            
+            Row(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(32.dp)
+                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                    .clickable { viewModel.cycleToneMapMode() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("TONE", fontSize = 9.sp, color = Color.White.copy(0.6f))
+                Text(toneModeName, fontSize = 13.sp, color = Gold, fontWeight = FontWeight.Bold)
+            }
         }
 
         // --- RIGHT SIDE: Shutter Button ---
