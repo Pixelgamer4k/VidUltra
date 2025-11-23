@@ -54,10 +54,9 @@ class CameraViewModel(application: Application) : AndroidViewModel(application) 
     val toneMapMode: StateFlow<Int> = _toneMapMode.asStateFlow()
     
     fun cycleToneMapMode() {
-        val current = _toneMapMode.value
-        val next = (current + 1) % 5
-        api.setToneMapMode(next)
-        _toneMapMode.value = next
+        val newMode = (_toneMapMode.value + 1) % 6
+        _toneMapMode.value = newMode
+        api.setToneMapMode(newMode)
     }
 
     override fun onCleared() {
