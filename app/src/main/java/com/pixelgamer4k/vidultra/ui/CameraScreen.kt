@@ -213,6 +213,7 @@ fun SupremeOverlay(
                 2 -> "FLAT"
                 3 -> "GAMMA"
                 4 -> "REC709"
+                5 -> "REC2020"
                 else -> "UNK"
             }
             
