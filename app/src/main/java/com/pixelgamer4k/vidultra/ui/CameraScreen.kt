@@ -52,6 +52,7 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
             // Full Screen Preview
             val renderer = remember {
                 FocusPeakingRenderer { surfaceTexture ->
+                    surfaceTexture.setDefaultBufferSize(3840, 2160) // Set high-res buffer
                     val surface = Surface(surfaceTexture)
                     cameraViewModel.onSurfaceReady(surface)
                 }
@@ -133,7 +134,8 @@ fun ExactPremiumOverlay(
         // --- LEFT SIDE STACK ---
         Column(
             modifier = Modifier
-                .align(Alignment.CenterStart),
+                .align(Alignment.TopStart)
+                .padding(top = 80.dp), // Push down below histogram (60dp + 20dp spacing)
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             LargeInfoBadge(
@@ -176,14 +178,14 @@ fun ExactPremiumOverlay(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(bottom = 20.dp)
+                .padding(bottom = 4.dp) // Pushed to edge
         ) {
             // Manual Controls Bar (Center)
             AnimatedVisibility(
                 visible = activeControl == null,
                 enter = fadeIn(),
                 exit = fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp)
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
             ) {
                 Box(
                     modifier = Modifier

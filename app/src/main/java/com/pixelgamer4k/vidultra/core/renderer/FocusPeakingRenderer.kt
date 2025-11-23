@@ -104,6 +104,36 @@ class FocusPeakingRenderer(
         this.width = width
         this.height = height
         GLES20.glViewport(0, 0, width, height)
+        
+        // Calculate aspect ratio (assume 16:9 video for now)
+        val videoAspect = 3840f / 2160f
+        val viewAspect = width.toFloat() / height.toFloat()
+        
+        var scaleX = 1f
+        var scaleY = 1f
+        
+        if (viewAspect > videoAspect) {
+            // View is wider than video (crop top/bottom)
+            // To fill width, we scale Y up
+            // Actually, standard fit:
+            // if view is wider, video fits height, width has bars.
+            // Center Crop:
+            // if view is wider, we scale video to match width. Height is cropped.
+            // scale = viewWidth / videoWidth (normalized)
+            
+            // Let's simplify:
+            // We want to fill the screen.
+            scaleY = viewAspect / videoAspect
+        } else {
+            // View is taller than video (crop sides)
+            scaleX = videoAspect / viewAspect
+        }
+        
+        Matrix.setIdentityM(mMVPMatrix, 0)
+        // Flip Y to fix inverted video if needed (Android OES texture is often inverted relative to GL coords)
+        // But usually SurfaceTexture transform handles it.
+        // If user says inverted, let's flip Y.
+        Matrix.scaleM(mMVPMatrix, 0, scaleX, -scaleY, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
