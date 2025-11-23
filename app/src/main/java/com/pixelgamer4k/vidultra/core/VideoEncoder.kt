@@ -2,6 +2,7 @@ package com.pixelgamer4k.vidultra.core
 
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
+import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
@@ -51,7 +52,7 @@ class VideoEncoder(
             
             if (codecInfo != null) {
                 Log.i(TAG, "Using encoder: ${codecInfo.name}")
-                val capabilities = codecInfo.getCapabilitiesFor Type(MIME_TYPE)
+                val capabilities = codecInfo.getCapabilitiesForType(MIME_TYPE)
                 Log.i(TAG, "Encoder capabilities: ${capabilities.colorFormats.joinToString()}")
             }
             
