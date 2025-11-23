@@ -1,10 +1,9 @@
 # VidUltra - Project Progress Tracker
 
 ## Current Status
-**Version:** v0.2.1-pre-alpha
-**Phase:** UI Complete - Manual Controls Polished
-**Last Updated:** November 23, 2025 04:03 IST
-
+**Version:** v0.3.1-alpha
+**Phase:** Testing Complete - Ready for Release
+**Last Updated:** November 23, 2025 11:40 IST
 
 ## ✅ Completed Milestones
 
@@ -42,92 +41,106 @@
 - [x] Spring-based popup animations
 - [x] Google Photos integration with fallback
 
+### 10-bit Video Recording (v0.3.1-alpha) ✅ NEW
+- [x] MediaCodec HEVCProfileMain10 capability detection
+- [x] Bit depth state management (StateFlow)
+- [x] UI toggle switch (8-bit ⟷ 10-bit)
+- [x] Dynamic bitrate display (100 → 150 Mbps)
+- [x] MediaRecorder profile configuration
+- [x] **Verified on OnePlus 12R** - Metadata confirms Main 10 profile
+
 ### Build Fixes
 - [x] All compilation errors resolved
 - [x] Missing imports added
 - [x] Duplicate annotations removed
 - [x] Package declarations corrected
+- [x] Proper .gitignore added
 
 ## 🎯 Current Objectives
 
-### Immediate (Next Session)
-- [ ] Verify build on physical device
-- [ ] Test manual controls during recording
-- [ ] Validate gallery integration
-- [ ] Test animation smoothness
+### Immediate (Ready to Release)
+- [ ] Create v0.3.1-alpha release notes
+- [ ] Update README with 10-bit feature documentation
+- [ ] Tag v0.3.1-alpha in Git
+- [ ] Upload APK to GitHub releases
 
-### Short-term (v1.0.0)
+### Short-term (v0.4.0)
 - [ ] Connect histogram to actual camera data
 - [ ] Implement focus peaking shader
 - [ ] Add zebra stripes (overexposure indicator)
 - [ ] Waveform monitor
 - [ ] Dynamic settings (read actual bitrate/codec from camera)
 
-### Medium-term (v1.1.0)
+### Medium-term (v0.5.0)
 - [ ] LUT support for color grading
 - [ ] Multiple aspect ratios (16:9, 4:3, 1:1, 2.35:1)
 - [ ] Frame rate options (24, 30, 60, 120 fps)
 - [ ] Focus peaking color customization
 - [ ] Settings persistence
 
-### Long-term (v2.0.0)
+### Long-term (v1.0.0)
 - [ ] RAW video recording (if supported)
 - [ ] Audio level meters
 - [ ] Timecode display
 - [ ] Log profile support (Flat, Log, HLG)
 - [ ] Advanced stabilization
 
-
 ## 📊 Technical Metrics
+
+### Video Recording Specifications
+| Feature | 8-bit | 10-bit |
+|---------|-------|--------|
+| Resolution | 4K (3840×2160) | 4K (3840×2160) |
+| Frame Rate | 30 FPS | 30 FPS |
+| Codec | HEVC | HEVC Main 10 |
+| Bitrate | 100 Mbps | 150 Mbps |
+| File Size (1 min) | ~750 MB | ~1.12 GB |
+| Color Depth | 8-bit (256 shades/channel) | 10-bit (1024 shades/channel) |
 
 ### UI Performance
 - Dock size: 148dp × 48dp (ultra-compact)
 - Animation duration: 300ms fade, spring bounce
 - Recording transparency: 30% alpha for non-essential UI
 
-### Camera Specifications
-- Resolution: 4K (3840×2160)
-- Frame Rate: 30 FPS
-- Codec: HEVC (H.265)
-- Bitrate: 100 Mbps
-- Bit Depth: 8-bit
-- ISO Range: 100-3200
-- Shutter Range: 1/30s - 1/8000s
-
 ### Code Stats
 - Main Components: 3 (Camera2Api, CameraViewModel, CameraScreen)
-- Lines of Code (approx): 600+
-- Imports: ~40
+- Lines of Code (approx): 700+
+- Imports: ~45
 - Dependencies: 8 (Compose BOM, Camera2, Accompanist, Lifecycle)
 
 ## 🐛 Known Issues
 - None (all major issues resolved)
 
+## ✅ Device Compatibility
+
+### Verified Devices
+- **OnePlus 12R**: ✅ Full 10-bit support confirmed
+
+### Expected Compatibility
+- Snapdragon 8 Gen 1+ devices (likely support)
+- MediaTek Dimensity 9000+ devices (likely support)
+- Requires Android 10+ for reliable 10-bit encoding
+
 ## 🔄 Recent Fixes (Session: Nov 23, 2025)
-1. ✅ Fixed overlapping UI (dock now centered)
-2. ✅ Replaced gradient shadow with frosted glass
-3. ✅ Changed shutter to discrete picker
-4. ✅ Added custom gallery icon
-5. ✅ Separated 4K indicator
-6. ✅ Fixed compilation errors
-7. ✅ Optimized dock size
+1. ✅ Added .gitignore to prevent build artifacts in repo
+2. ✅ Implemented 10-bit HEVC capability detection
+3. ✅ Added bit depth toggle UI
+4. ✅ Fixed lifecycle management in CameraScreen
+5. ✅ Verified 10-bit working on OnePlus 12R
 
 ## 📝 Notes
 - All changes pushed to GitHub (main branch)
 - Project structure is clean and maintainable
-- Ready for advanced feature development
-- UI is production-quality
+- v0.3.1-alpha ready for public release
+- 10-bit feature validated on real hardware
 
 ## 🎬 Next Session Focus
-**Primary Goal:** Implement focus peaking using edge detection shader
+**Primary Goal:** Create v0.3.1-alpha release and prepare for focus peaking implementation
 
-**Requirements:**
-1. Real-time camera frame analysis
-2. Edge detection algorithm (Sobel or Canny)
-3. Overlay rendering on preview
-4. Color customization (red, green, blue, white)
-5. Intensity/threshold adjustment
-6. Toggle on/off from UI
+**Release Tasks:**
+1. Create comprehensive release notes
+2. Update README.md
+3. Tag release in Git
+4. Build and upload APK
 
-**Estimated Complexity:** High (requires RenderScript or Vulkan)
-**Time Estimate:** 3-4 hours
+**Estimated Time:** 1 hour
