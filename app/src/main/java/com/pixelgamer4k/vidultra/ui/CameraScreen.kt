@@ -147,24 +147,23 @@ fun SupremeOverlay(
                     .width(140.dp)
                     .height(32.dp)
                     .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 6.dp, vertical = 4.dp), // Reduced horizontal padding
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
-                    modifier = Modifier.weight(1f) // Allow column to take available space
+                    modifier = Modifier.widthIn(max = 70.dp) // Explicit max width to prevent compression
                 ) {
                     Text("DEPTH", fontSize = 9.sp, color = Color.White.copy(0.6f))
                     Text(
                         "$bitDepth-bit", 
-                        fontSize = 12.sp, // Reduced from 13sp to prevent clipping
+                        fontSize = 10.sp, // Further reduced for safety
                         color = if (bitDepth == 10) Gold else Color.Green, 
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Clip
                     )
                 }
-                
-                Spacer(modifier = Modifier.width(4.dp)) // Add spacing between text and toggle
                 
                 // Toggle button (8-bit ⟷ 10-bit)
                 Box(
@@ -200,6 +199,7 @@ fun SupremeOverlay(
                     }
                 }
             }
+
 
             
             SettingItem(label = "LOG", value = "OFF", color = Color.White)
