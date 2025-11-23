@@ -69,9 +69,9 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
                 activeControl = activeControl,
                 onActiveControlChange = { activeControl = it },
                 onRecord = { if (it) cameraViewModel.stopRecording() else cameraViewModel.startRecording() },
-                onIsoChange = { cameraViewModel.setIso(it.toInt()) },
+                onIsoChange = { cameraViewModel.setIso(it) },
                 onShutterChange = { cameraViewModel.setExposure(it.toLong()) },
-                onFocusChange = { cameraViewModel.setFocus(it) },
+                onFocusChange = { cameraViewModel.setFocus(it.toFloat()) },
                 onBitDepthChange = { cameraViewModel.setBitDepth(it) }
             )
         } else {
@@ -89,9 +89,9 @@ fun PremiumCameraOverlay(
     activeControl: String?,
     onActiveControlChange: (String?) -> Unit,
     onRecord: (Boolean) -> Unit,
-    onIsoChange: (Float) -> Unit,
-    onShutterChange: (Float) -> Unit,
-    onFocusChange: (Float) -> Unit,
+    onIsoChange: (Int) -> Unit,
+    onShutterChange: (Int) -> Unit,
+    onFocusChange: (Int) -> Unit,
     onBitDepthChange: (Int) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
