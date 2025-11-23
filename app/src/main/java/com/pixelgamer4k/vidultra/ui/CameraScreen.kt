@@ -1,8 +1,8 @@
 package com.pixelgamer4k.vidultra.ui
 
 import android.view.Surface
-import android.view.TextureView
-import android.graphics.SurfaceTexture
+import android.view.SurfaceHolder
+import com.pixelgamer4k.vidultra.ui.components.AutoFitSurfaceView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -40,35 +40,6 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val cameraState = cameraViewModel.state.collectAsState().value
     val bitDepth = cameraViewModel.bitDepth.collectAsState().value
     val supports10Bit = cameraViewModel.supports10Bit.collectAsState().value
-    val selectedResolution = cameraViewModel.selectedResolution.collectAsState().value
-    val availableResolutions = cameraViewModel.availableResolutions.collectAsState().value
-    
-    var activeControl by remember { mutableStateOf<String?>(null) }
-    var showResolutionSelector by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        if (permissionState.allPermissionsGranted) {
-            // Simple TextureView Preview
-            AndroidView(
-                factory = { context ->
-                    TextureView(context).apply {
-                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-                                cameraViewModel.onSurfaceReady(Surface(surface))
-                            }
-                            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-                            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-                                cameraViewModel.onSurfaceDestroyed()
-                                return true
-                            }
-                            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-            
-            // 1:1 Premium UI Overlay
             ExactPremiumOverlay(
                 isRecording = cameraState is Camera2Api.CameraState.Recording,
                 bitDepth = bitDepth,
