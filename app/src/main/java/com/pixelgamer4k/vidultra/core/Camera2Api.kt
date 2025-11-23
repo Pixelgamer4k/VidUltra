@@ -301,6 +301,47 @@ class Camera2Api(private val context: Context) {
     private fun applySettings() {
         val builder = previewRequestBuilder ?: return
         
+        // **CINEMA TONE MAPPING & COLOR SCIENCE**
+        
+        // Use sRGB tone curve for natural, film-like roll-off in highlights
+        builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_CONTRAST_CURVE)
+        
+        // Natural, cinema-grade tone curve (gentle S-curve for pleasing contrast)
+        // This mimics cinema camera color science with smooth highlight roll-off
+        val toneCurve = android.hardware.camera2.params.TonemapCurve(
+            // Red channel - slightly warmer in shadows
+            floatArrayOf(
+                0.0f, 0.0f,
+                0.25f, 0.20f,
+                0.5f, 0.50f,
+                0.75f, 0.75f,
+                1.0f, 0.95f  // Gentle highlight compression
+            ),
+            // Green channel - neutral mid-tones
+            floatArrayOf(
+                0.0f, 0.0f,
+                0.25f, 0.22f,
+                0.5f, 0.50f,
+                0.75f, 0.74f,
+                1.0f, 0.94f
+            ),
+            // Blue channel - slightly cooler in highlights
+            floatArrayOf(
+                0.0f, 0.0f,
+                0.25f, 0.21f,
+                0.5f, 0.50f,
+                0.75f, 0.73f,
+                1.0f, 0.93f
+            )
+        )
+        builder.set(CaptureRequest.TONEMAP_CURVE, toneCurve)
+        
+        // Natural color correction - less saturated, more organic
+        builder.set(CaptureRequest.COLOR_CORRECTION_MODE, CameraMetadata.COLOR_CORRECTION_MODE_HIGH_QUALITY)
+        
+        // Accurate white balance for natural skin tones
+        builder.set(CaptureRequest.CONTROL_AWB_MODE, CameraMetadata.CONTROL_AWB_MODE_AUTO)
+        
         // Disable edge enhancement for soft, cinematic look
         builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF)
         
