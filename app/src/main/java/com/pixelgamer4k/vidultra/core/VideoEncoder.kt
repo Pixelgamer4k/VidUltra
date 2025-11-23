@@ -44,6 +44,17 @@ class VideoEncoder(
      */
     fun prepare() {
         try {
+            // Check encoder capabilities first
+            val codecInfo = MediaCodecList(MediaCodecList.REGULAR_CODECS).findEncoderForFormat(
+                MediaFormat.createVideoFormat(MIME_TYPE, width, height)
+            )
+            
+            if (codecInfo != null) {
+                Log.i(TAG, "Using encoder: ${codecInfo.name}")
+                val capabilities = codecInfo.getCapabilitiesFor Type(MIME_TYPE)
+                Log.i(TAG, "Encoder capabilities: ${capabilities.colorFormats.joinToString()}")
+            }
+            
             // Create MediaFormat
             val format = MediaFormat.createVideoFormat(MIME_TYPE, width, height)
             
@@ -56,7 +67,12 @@ class VideoEncoder(
             val bitrate = if (bitDepth == 10) 150_000_000 else 100_000_000
             format.setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
             
-            // Color space configuration (THE KEY PART!)
+            // ===== COLOR SPACE CONFIGURATION (THE KEY PART!) =====
+            Log.i(TAG, "Attempting to set color space:")
+            Log.i(TAG, "  - COLOR_STANDARD: $colorStandard (${getColorStandardName(colorStandard)})")
+            Log.i(TAG, "  - COLOR_TRANSFER: $colorTransfer (${getColorTransferName(colorTransfer)})")
+            Log.i(TAG, "  - COLOR_RANGE: $colorRange")
+            
             format.setInteger(MediaFormat.KEY_COLOR_STANDARD, colorStandard)
             format.setInteger(MediaFormat.KEY_COLOR_TRANSFER, colorTransfer)
             format.setInteger(MediaFormat.KEY_COLOR_RANGE, colorRange)
@@ -67,7 +83,7 @@ class VideoEncoder(
                 format.setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel51)
             }
             
-            Log.i(TAG, "Encoder Format: $format")
+            Log.i(TAG, "Encoder Format (before configure): $format")
             
             // Create and configure codec
             mediaCodec = MediaCodec.createEncoderByType(MIME_TYPE)
@@ -80,13 +96,29 @@ class VideoEncoder(
             mediaMuxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             
             Log.i(TAG, "VideoEncoder prepared: ${width}x${height} @ ${frameRate}fps, ${bitDepth}-bit")
-            Log.i(TAG, "Color: Standard=$colorStandard, Transfer=$colorTransfer, Range=$colorRange")
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to prepare encoder", e)
             release()
             throw e
         }
+    }
+    
+    private fun getColorStandardName(value: Int): String = when (value) {
+        1 -> "BT709"
+        2 -> "BT601_625"
+        4 -> "BT601_525"
+        6 -> "BT2020"
+        else -> "Unknown($value)"
+    }
+    
+    private fun getColorTransferName(value: Int): String = when (value) {
+        1 -> "LINEAR"
+        2 -> "SRGB"
+        3 -> "SDR_VIDEO"
+        6 -> "HLG"
+        7 -> "ST2084 (PQ)"
+        else -> "Unknown($value)"
     }
     
     /**
@@ -180,7 +212,31 @@ class VideoEncoder(
                 outputBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                     // First buffer - add track to muxer
                     val newFormat = mediaCodec?.outputFormat
-                    Log.i(TAG, "Output format changed: $newFormat")
+                    Log.i(TAG, "===== OUTPUT FORMAT CHANGED =====")
+                    Log.i(TAG, "Output format: $newFormat")
+                    
+                    // Check if color space was applied
+                    try {
+                        val outColorStandard = newFormat?.getInteger(MediaFormat.KEY_COLOR_STANDARD)
+                        val outColorTransfer = newFormat?.getInteger(MediaFormat.KEY_COLOR_TRANSFER)
+                        val outColorRange = newFormat?.getInteger(MediaFormat.KEY_COLOR_RANGE)
+                        
+                        Log.i(TAG, "===== ACTUAL ENCODER OUTPUT COLOR SPACE =====")
+                        Log.i(TAG, "  COLOR_STANDARD: $outColorStandard (${getColorStandardName(outColorStandard ?: 0)})")
+                        Log.i(TAG, "  COLOR_TRANSFER: $outColorTransfer (${getColorTransferName(outColorTransfer ?: 0)})")
+                        Log.i(TAG, "  COLOR_RANGE: $outColorRange")
+                        Log.i(TAG, "============================================")
+                        
+                        if (outColorStandard != colorStandard || outColorTransfer != colorTransfer) {
+                            Log.w(TAG, "⚠️ WARNING: Encoder IGNORED color space settings!")
+                            Log.w(TAG, "  Requested: Standard=$colorStandard, Transfer=$colorTransfer")
+                            Log.w(TAG, "  Got: Standard=$outColorStandard, Transfer=$outColorTransfer")
+                        } else {
+                            Log.i(TAG, "✅ Color space settings APPLIED successfully!")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not read color space from output format: ${e.message}")
+                    }
                     
                     if (trackIndex == -1) {
                         trackIndex = mediaMuxer?.addTrack(newFormat!!) ?: -1
