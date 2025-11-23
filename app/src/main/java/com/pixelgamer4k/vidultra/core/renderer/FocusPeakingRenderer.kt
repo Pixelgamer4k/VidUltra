@@ -105,29 +105,39 @@ class FocusPeakingRenderer(
         this.height = height
         GLES20.glViewport(0, 0, width, height)
         
-        // Determine video aspect ratio based on screen orientation
-        // If screen is portrait (width < height), assume video is also rotated 90 degrees (9:16)
-        val isPortrait = width < height
-        val videoWidth = if (isPortrait) 2160f else 3840f
-        val videoHeight = if (isPortrait) 3840f else 2160f
+        // Video is always Landscape (3840x2160)
+        val videoWidth = 3840f
+        val videoHeight = 2160f
         
-        val videoAspect = videoWidth / videoHeight
-        val viewAspect = width.toFloat() / height.toFloat()
+        // We need to rotate the video 90 degrees to fit portrait screen
+        // So effective video aspect becomes 2160/3840
+        val rotatedVideoAspect = videoHeight / videoWidth
+        val screenAspect = width.toFloat() / height.toFloat()
         
         var scaleX = 1f
         var scaleY = 1f
         
-        if (viewAspect > videoAspect) {
-            // View is wider than video (crop top/bottom)
-            scaleY = viewAspect / videoAspect
+        if (screenAspect < rotatedVideoAspect) {
+            // Screen is taller/thinner than video (e.g. 9:21 vs 9:16)
+            // We need to scale up the video to cover the screen height
+            // Since we are rotating, the Quad's X becomes Screen Y, Quad's Y becomes Screen X
+            
+            // To fill height (Screen Y), we scale Quad X
+            scaleX = rotatedVideoAspect / screenAspect
+            scaleY = 1f
         } else {
-            // View is taller than video (crop sides)
-            scaleX = videoAspect / viewAspect
+            // Screen is wider
+            scaleX = 1f
+            scaleY = screenAspect / rotatedVideoAspect
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0)
-        // Remove manual Y-flip, let SurfaceTexture matrix handle orientation
+        
+        // 1. Scale to correct aspect ratio
         Matrix.scaleM(mMVPMatrix, 0, scaleX, scaleY, 1f)
+        
+        // 2. Rotate to match orientation
+        Matrix.rotateM(mMVPMatrix, 0, -90f, 0f, 0f, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
