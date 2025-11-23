@@ -267,11 +267,11 @@ fun SupremeOverlay(
                         }
                     }
                 }
-                }
             }
             CircleIcon("R")
             CircleIcon("S")
         }
+
 
         // --- BOTTOM CENTER: Slider/Picker Popup ---
         AnimatedVisibility(
