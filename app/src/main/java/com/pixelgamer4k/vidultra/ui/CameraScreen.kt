@@ -151,10 +151,20 @@ fun SupremeOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier.weight(1f) // Allow column to take available space
+                ) {
                     Text("DEPTH", fontSize = 9.sp, color = Color.White.copy(0.6f))
-                    Text("$bitDepth-bit", fontSize = 13.sp, color = if (bitDepth == 10) Gold else Color.Green, fontWeight = FontWeight.Bold)
+                    Text(
+                        "$bitDepth-bit", 
+                        fontSize = 12.sp, // Reduced from 13sp to prevent clipping
+                        color = if (bitDepth == 10) Gold else Color.Green, 
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
                 }
+                
+                Spacer(modifier = Modifier.width(4.dp)) // Add spacing between text and toggle
                 
                 // Toggle button (8-bit ⟷ 10-bit)
                 Box(
@@ -190,6 +200,7 @@ fun SupremeOverlay(
                     }
                 }
             }
+
             
             SettingItem(label = "LOG", value = "OFF", color = Color.White)
         }
