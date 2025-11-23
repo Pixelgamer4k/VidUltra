@@ -105,8 +105,13 @@ class FocusPeakingRenderer(
         this.height = height
         GLES20.glViewport(0, 0, width, height)
         
-        // Calculate aspect ratio (assume 16:9 video for now)
-        val videoAspect = 3840f / 2160f
+        // Determine video aspect ratio based on screen orientation
+        // If screen is portrait (width < height), assume video is also rotated 90 degrees (9:16)
+        val isPortrait = width < height
+        val videoWidth = if (isPortrait) 2160f else 3840f
+        val videoHeight = if (isPortrait) 3840f else 2160f
+        
+        val videoAspect = videoWidth / videoHeight
         val viewAspect = width.toFloat() / height.toFloat()
         
         var scaleX = 1f
@@ -114,15 +119,6 @@ class FocusPeakingRenderer(
         
         if (viewAspect > videoAspect) {
             // View is wider than video (crop top/bottom)
-            // To fill width, we scale Y up
-            // Actually, standard fit:
-            // if view is wider, video fits height, width has bars.
-            // Center Crop:
-            // if view is wider, we scale video to match width. Height is cropped.
-            // scale = viewWidth / videoWidth (normalized)
-            
-            // Let's simplify:
-            // We want to fill the screen.
             scaleY = viewAspect / videoAspect
         } else {
             // View is taller than video (crop sides)
@@ -130,10 +126,8 @@ class FocusPeakingRenderer(
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0)
-        // Flip Y to fix inverted video if needed (Android OES texture is often inverted relative to GL coords)
-        // But usually SurfaceTexture transform handles it.
-        // If user says inverted, let's flip Y.
-        Matrix.scaleM(mMVPMatrix, 0, scaleX, -scaleY, 1f)
+        // Remove manual Y-flip, let SurfaceTexture matrix handle orientation
+        Matrix.scaleM(mMVPMatrix, 0, scaleX, scaleY, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
