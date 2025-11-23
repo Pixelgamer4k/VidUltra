@@ -112,34 +112,31 @@ class FocusPeakingRenderer(
         this.height = height
         GLES20.glViewport(0, 0, width, height)
         
-        // Video dimensions are now dynamic
-        val videoAspect = videoWidth / videoHeight
+        // Calculate aspect ratios
+        val videoAspect = videoWidth / videoHeight  // e.g., 16/9 = 1.777 for landscape video
+        val screenAspect = width.toFloat() / height.toFloat()  // e.g., 9/20 = 0.45 for portrait phone
         
-        // After rotating 90 degrees for portrait display
-        val rotatedVideoAspect = videoHeight / videoWidth
-        val screenAspect = width.toFloat() / height.toFloat()
+        // After 90-degree rotation, the video will be displayed as portrait
+        // So we need to compare rotated video aspect (9/16) with screen aspect
+        val rotatedVideoAspect = 1f / videoAspect  // e.g., 9/16 = 0.5625
         
-        var scaleX = 1f
-        var scaleY = 1f
-        
-        // FIT mode - maintain aspect ratio, add letterbox/pillarbox if needed
+        // Calculate scale factors for FIT mode (maintain aspect ratio, add black bars)
+        val scale: Float
         if (screenAspect > rotatedVideoAspect) {
-            // Screen is wider than video (e.g., 9:18 screen vs 9:16 video)
-            // Fit to height, add black bars on sides
-            scaleX = screenAspect / rotatedVideoAspect
+            // Screen is wider than rotated video (rare for portrait)
+            // Fit to height, scale width down
+            scale = rotatedVideoAspect / screenAspect
         } else {
-            // Screen is narrower than video (e.g., 9:21 screen vs 9:16 video) 
-            // Fit to width, add black bars on top/bottom
-            scaleY = rotatedVideoAspect / screenAspect
+            // Screen is narrower than rotated video (typical)
+            // Fit to width, scale height down
+            scale = screenAspect / rotatedVideoAspect
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0)
-        
-        // Apply rotation first (90 degrees for portrait)
+        // Rotate 90 degrees
         Matrix.rotateM(mMVPMatrix, 0, 90f, 0f, 0f, 1f)
-        
-        // Then scale to fit (inverse scale to shrink into view)
-        Matrix.scaleM(mMVPMatrix, 0, 1f / scaleX, 1f / scaleY, 1f)
+        // Scale uniformly to fit
+        Matrix.scaleM(mMVPMatrix, 0, scale, scale, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
