@@ -337,20 +337,6 @@ class Camera2Api(private val context: Context) {
                 )
                 builder.set(CaptureRequest.TONEMAP_CURVE, linearCurve)
             }
-            3 -> { // GAMMA 2.2 (Default/Neutral)
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
-                builder.set(CaptureRequest.TONEMAP_GAMMA, 2.2f)
-            }
-            4 -> { // REC709 (Preset)
-                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_PRESET_CURVE)
-                builder.set(CaptureRequest.TONEMAP_PRESET_CURVE, CameraMetadata.TONEMAP_PRESET_CURVE_REC709)
-            }
-        }
-        
-        // 3. Disable enhancements for soft, cinematic look
-        builder.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_OFF) // No artificial sharpening
-        builder.set(CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_MINIMAL) // Natural grain
-        builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF) // Organic movement
         
         if (iso != null || exposure != null) {
             builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
