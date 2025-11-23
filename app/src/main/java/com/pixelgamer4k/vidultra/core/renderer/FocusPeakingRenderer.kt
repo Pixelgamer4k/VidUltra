@@ -112,15 +112,19 @@ class FocusPeakingRenderer(
         this.height = height
         GLES20.glViewport(0, 0, width, height)
         
-        // For portrait display with landscape video:
-        // We rotate the video 90 degrees, then scale to fill screen height
-        // This maintains the aspect ratio but crops sides if needed
+        // Calculate aspect ratios
+        val videoAspect = videoWidth / videoHeight  // e.g., 16/9 for landscape
+        val rotatedVideoAspect = 1f / videoAspect  // e.g., 9/16 after rotation
+        val screenAspect = width.toFloat() / height.toFloat()
+        
+        // Scale to fill screen height, crop width if needed
+        val scale = rotatedVideoAspect / screenAspect
         
         Matrix.setIdentityM(mMVPMatrix, 0)
         // Rotate 90 degrees
         Matrix.rotateM(mMVPMatrix, 0, 90f, 0f, 0f, 1f)
-        // No additional scaling - let video fill the screen naturally
-        // The rotation handles the orientation
+        // Scale to fill height
+        Matrix.scaleM(mMVPMatrix, 0, scale, scale, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
