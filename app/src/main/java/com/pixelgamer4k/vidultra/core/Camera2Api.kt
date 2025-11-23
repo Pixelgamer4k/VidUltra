@@ -75,6 +75,7 @@ class Camera2Api(private val context: Context) {
 
     fun start() {
         startBackgroundThread()
+        LogWriter.init(context)
     }
 
     fun stop() {

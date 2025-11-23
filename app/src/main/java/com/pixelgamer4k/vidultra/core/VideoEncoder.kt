@@ -58,10 +58,22 @@ class VideoEncoder(
             format.setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
             
             // ===== COLOR SPACE CONFIGURATION (THE KEY PART!) =====
+            val colorStdName = getColorStandardName(colorStandard)
+            val colorTrfName = getColorTransferName(colorTransfer)
+            
             Log.i(TAG, "Attempting to set color space:")
-            Log.i(TAG, "  - COLOR_STANDARD: $colorStandard (${getColorStandardName(colorStandard)})")
-            Log.i(TAG, "  - COLOR_TRANSFER: $colorTransfer (${getColorTransferName(colorTransfer)})")
+            Log.i(TAG, "  - COLOR_STANDARD: $colorStandard ($colorStdName)")
+            Log.i(TAG, "  - COLOR_TRANSFER: $colorTransfer ($colorTrfName)")
             Log.i(TAG, "  - COLOR_RANGE: $colorRange")
+            
+            LogWriter.writeLog("========================================")
+            LogWriter.writeLog("ENCODER CONFIGURATION")
+            LogWriter.writeLog("Resolution: ${width}x${height} @ ${frameRate}fps")
+            LogWriter.writeLog("Bit Depth: $bitDepth-bit")
+            LogWriter.writeLog("Requested Color Space:")
+            LogWriter.writeLog("  - COLOR_STANDARD: $colorStandard ($colorStdName)")
+            LogWriter.writeLog("  - COLOR_TRANSFER: $colorTransfer ($colorTrfName)")
+            LogWriter.writeLog("  - COLOR_RANGE: $colorRange")
             
             format.setInteger(MediaFormat.KEY_COLOR_STANDARD, colorStandard)
             format.setInteger(MediaFormat.KEY_COLOR_TRANSFER, colorTransfer)
@@ -71,9 +83,13 @@ class VideoEncoder(
             if (bitDepth == 10) {
                 format.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10)
                 format.setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel51)
+                LogWriter.writeLog("Profile: HEVC Main 10")
+            } else {
+                LogWriter.writeLog("Profile: HEVC Main")
             }
             
             Log.i(TAG, "Encoder Format (before configure): $format")
+            LogWriter.writeLog("========================================")
             
             // Create and configure codec
             mediaCodec = MediaCodec.createEncoderByType(MIME_TYPE)
@@ -141,6 +157,9 @@ class VideoEncoder(
             
             // Wait for encoder thread to finish draining
             Thread.sleep(500)
+            
+            LogWriter.writeLog("Encoder stopped")
+            LogWriter.close()
             
             // Stop codec
             mediaCodec?.stop()
@@ -211,21 +230,40 @@ class VideoEncoder(
                         val outColorTransfer = newFormat?.getInteger(MediaFormat.KEY_COLOR_TRANSFER)
                         val outColorRange = newFormat?.getInteger(MediaFormat.KEY_COLOR_RANGE)
                         
+                        val outStdName = getColorStandardName(outColorStandard ?: 0)
+                        val outTrfName = getColorTransferName(outColorTransfer ?: 0)
+                        
                         Log.i(TAG, "===== ACTUAL ENCODER OUTPUT COLOR SPACE =====")
-                        Log.i(TAG, "  COLOR_STANDARD: $outColorStandard (${getColorStandardName(outColorStandard ?: 0)})")
-                        Log.i(TAG, "  COLOR_TRANSFER: $outColorTransfer (${getColorTransferName(outColorTransfer ?: 0)})")
+                        Log.i(TAG, "  COLOR_STANDARD: $outColorStandard ($outStdName)")
+                        Log.i(TAG, "  COLOR_TRANSFER: $outColorTransfer ($outTrfName)")
                         Log.i(TAG, "  COLOR_RANGE: $outColorRange")
                         Log.i(TAG, "============================================")
+                        
+                        LogWriter.writeLog("")
+                        LogWriter.writeLog("ENCODER OUTPUT FORMAT")
+                        LogWriter.writeLog("Actual Color Space:")
+                        LogWriter.writeLog("  - COLOR_STANDARD: $outColorStandard ($outStdName)")
+                        LogWriter.writeLog("  - COLOR_TRANSFER: $outColorTransfer ($outTrfName)")
+                        LogWriter.writeLog("  - COLOR_RANGE: $outColorRange")
                         
                         if (outColorStandard != colorStandard || outColorTransfer != colorTransfer) {
                             Log.w(TAG, "⚠️ WARNING: Encoder IGNORED color space settings!")
                             Log.w(TAG, "  Requested: Standard=$colorStandard, Transfer=$colorTransfer")
                             Log.w(TAG, "  Got: Standard=$outColorStandard, Transfer=$outColorTransfer")
+                            
+                            LogWriter.writeLog("")
+                            LogWriter.writeLog("⚠️ WARNING: COLOR SPACE MISMATCH!")
+                            LogWriter.writeLog("  Requested: Standard=$colorStandard (${getColorStandardName(colorStandard)}), Transfer=$colorTransfer (${getColorTransferName(colorTransfer)})")
+                            LogWriter.writeLog("  Got: Standard=$outColorStandard ($outStdName), Transfer=$outColorTransfer ($outTrfName)")
+                            LogWriter.writeLog("  This means the encoder IGNORED the color space settings!")
                         } else {
                             Log.i(TAG, "✅ Color space settings APPLIED successfully!")
+                            LogWriter.writeLog("")
+                            LogWriter.writeLog("✅ SUCCESS: Color space settings APPLIED correctly!")
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Could not read color space from output format: ${e.message}")
+                        LogWriter.writeLog("ERROR: Could not read color space from output: ${e.message}")
                     }
                     
                     if (trackIndex == -1) {
