@@ -43,19 +43,27 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val cameraState = cameraViewModel.state.collectAsState().value
     val bitDepth = cameraViewModel.bitDepth.collectAsState().value
     val supports10Bit = cameraViewModel.supports10Bit.collectAsState().value
+    val selectedResolution = cameraViewModel.selectedResolution.collectAsState().value
+    val availableResolutions = cameraViewModel.availableResolutions.collectAsState().value
     
     var activeControl by remember { mutableStateOf<String?>(null) }
     var peakingEnabled by remember { mutableStateOf(false) }
+    var showResolutionSelector by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (permissionState.allPermissionsGranted) {
             // Full Screen Preview
             val renderer = remember {
                 FocusPeakingRenderer { surfaceTexture ->
-                    surfaceTexture.setDefaultBufferSize(3840, 2160) // Set high-res buffer
+                    surfaceTexture.setDefaultBufferSize(selectedResolution.width, selectedResolution.height)
                     val surface = Surface(surfaceTexture)
                     cameraViewModel.onSurfaceReady(surface)
                 }
+            }
+            
+            // Update buffer size when resolution changes
+            LaunchedEffect(selectedResolution) {
+                renderer.setVideoDimensions(selectedResolution.width, selectedResolution.height)
             }
             
             DisposableEffect(Unit) {
@@ -93,8 +101,20 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
                 onFocusChange = { cameraViewModel.setFocus(it.toFloat()) },
                 onBitDepthChange = { cameraViewModel.setBitDepth(it) },
                 peakingEnabled = peakingEnabled,
-                onPeakingToggle = { peakingEnabled = !peakingEnabled }
+                onPeakingToggle = { peakingEnabled = !peakingEnabled },
+                selectedResolution = selectedResolution,
+                onResolutionClick = { showResolutionSelector = true }
             )
+            
+            // Resolution Selector
+            if (showResolutionSelector) {
+                ResolutionSelector(
+                    availableResolutions = availableResolutions,
+                    selectedResolution = selectedResolution,
+                    onResolutionSelected = { cameraViewModel.selectResolution(it) },
+                    onDismiss = { showResolutionSelector = false }
+                )
+            }
         } else {
             LaunchedEffect(Unit) { permissionState.launchMultiplePermissionRequest() }
         }
@@ -115,7 +135,9 @@ fun ExactPremiumOverlay(
     onFocusChange: (Int) -> Unit,
     onBitDepthChange: (Int) -> Unit,
     peakingEnabled: Boolean,
-    onPeakingToggle: () -> Unit
+    onPeakingToggle: () -> Unit,
+    selectedResolution: com.pixelgamer4k.vidultra.core.Resolution,
+    onResolutionClick: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         
@@ -239,8 +261,9 @@ fun ExactPremiumOverlay(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 40.dp, end = 100.dp)
+                    .clickable(onClick = onResolutionClick)
             ) {
-                FormatBadge(text = "4K 30")
+                FormatBadge(text = "${selectedResolution.label} ${selectedResolution.fps}")
             }
             
             // Record Button (Far Right)

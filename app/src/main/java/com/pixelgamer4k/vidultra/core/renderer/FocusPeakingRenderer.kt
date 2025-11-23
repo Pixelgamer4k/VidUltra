@@ -40,7 +40,14 @@ class FocusPeakingRenderer(
     private var updateSurface = false
     private var width = 0
     private var height = 0
+    private var videoWidth = 3840f
+    private var videoHeight = 2160f
     var isPeakingEnabled = false
+    
+    fun setVideoDimensions(width: Int, height: Int) {
+        videoWidth = width.toFloat()
+        videoHeight = height.toFloat()
+    }
 
     init {
         val triangleVerticesData = floatArrayOf(
@@ -105,14 +112,11 @@ class FocusPeakingRenderer(
         this.height = height
         GLES20.glViewport(0, 0, width, height)
         
-        // Video is always Landscape (3840x2160 = 16:9)
-        val videoWidth = 3840f
-        val videoHeight = 2160f
-        val videoAspect = videoWidth / videoHeight  // 16:9 = 1.777...
+        // Video dimensions are now dynamic
+        val videoAspect = videoWidth / videoHeight
         
         // After rotating 90 degrees for portrait display
-        // The video becomes 9:16 (tall)
-        val rotatedVideoAspect = videoHeight / videoWidth  // 9:16 = 0.5625
+        val rotatedVideoAspect = videoHeight / videoWidth
         val screenAspect = width.toFloat() / height.toFloat()
         
         var scaleX = 1f

@@ -64,6 +64,39 @@ class Camera2Api(private val context: Context) {
             }
             return _supports10Bit ?: false
         }
+    
+    // Resolution
+    private var selectedResolution: Resolution = Resolution.PRESET_4K_16_9
+    
+    fun getSupportedResolutions(): List<Resolution> {
+        try {
+            val cameraId = getBackCameraId() ?: return Resolution.ALL_PRESETS
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                ?: return Resolution.ALL_PRESETS
+            
+            val sizes = map.getOutputSizes(MediaFormat.MIMETYPE_VIDEO_HEVC)
+            val supported = mutableListOf<Resolution>()
+            
+            // Check which presets are supported
+            for (preset in Resolution.ALL_PRESETS) {
+                if (sizes?.any { it.width == preset.width && it.height == preset.height } == true) {
+                    supported.add(preset)
+                }
+            }
+            
+            return supported.ifEmpty { listOf(Resolution.PRESET_4K_16_9) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting supported resolutions", e)
+            return Resolution.ALL_PRESETS
+        }
+    }
+    
+    fun setResolution(resolution: Resolution) {
+        selectedResolution = resolution
+    }
+    
+    fun getSelectedResolution(): Resolution = selectedResolution
 
     sealed class CameraState {
         object Closed : CameraState()
@@ -282,9 +315,9 @@ class Camera2Api(private val context: Context) {
         // Create encoder
         videoEncoder = VideoEncoder(
             outputFile = outputFile,
-            width = 3840,
-            height = 2160,
-            frameRate = 30,
+            width = selectedResolution.width,
+            height = selectedResolution.height,
+            frameRate = selectedResolution.fps,
             bitDepth = bitDepth
         ).apply {
             // Configure color space from current profile

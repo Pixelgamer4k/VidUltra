@@ -5,6 +5,7 @@ import android.view.Surface
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pixelgamer4k.vidultra.core.Camera2Api
+import com.pixelgamer4k.vidultra.core.Resolution
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,20 @@ class CameraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         api.start()
         _supports10Bit.value = api.supports10Bit
+        _availableResolutions.value = api.getSupportedResolutions()
+        _selectedResolution.value = api.getSelectedResolution()
+    }
+    
+    // Resolution State
+    private val _availableResolutions = MutableStateFlow<List<Resolution>>(emptyList())
+    val availableResolutions: StateFlow<List<Resolution>> = _availableResolutions.asStateFlow()
+    
+    private val _selectedResolution = MutableStateFlow<Resolution>(Resolution.PRESET_4K_16_9)
+    val selectedResolution: StateFlow<Resolution> = _selectedResolution.asStateFlow()
+    
+    fun selectResolution(resolution: Resolution) {
+        api.setResolution(resolution)
+        _selectedResolution.value = resolution
     }
 
     fun onSurfaceReady(surface: Surface) {
