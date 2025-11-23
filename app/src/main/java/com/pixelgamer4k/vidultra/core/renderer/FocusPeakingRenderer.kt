@@ -117,14 +117,14 @@ class FocusPeakingRenderer(
         val rotatedVideoAspect = 1f / videoAspect  // e.g., 9/16 after rotation
         val screenAspect = width.toFloat() / height.toFloat()
         
-        // Scale to fill screen height, crop width if needed
-        val scale = rotatedVideoAspect / screenAspect
+        // Scale to fill screen height - invert to scale UP
+        val scale = screenAspect / rotatedVideoAspect
         
         Matrix.setIdentityM(mMVPMatrix, 0)
         // Rotate 90 degrees
         Matrix.rotateM(mMVPMatrix, 0, 90f, 0f, 0f, 1f)
         // Scale to fill height
-        Matrix.scaleM(mMVPMatrix, 0, scale, scale, 1f)
+        Matrix.scaleM(mMVPMatrix, 0, 1f / scale, 1f / scale, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
