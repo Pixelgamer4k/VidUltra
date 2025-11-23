@@ -337,6 +337,19 @@ class Camera2Api(private val context: Context) {
                 )
                 builder.set(CaptureRequest.TONEMAP_CURVE, linearCurve)
             }
+            3 -> { // GAMMA 2.2 (Default/Neutral)
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
+                builder.set(CaptureRequest.TONEMAP_GAMMA, 2.2f)
+            }
+            4 -> { // REC709 (Preset)
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_PRESET_CURVE)
+                builder.set(CaptureRequest.TONEMAP_PRESET_CURVE, CameraMetadata.TONEMAP_PRESET_CURVE_REC709)
+            }
+            5 -> { // REC2020 (Gamma 2.4 - BT.1886)
+                builder.set(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_GAMMA_VALUE)
+                builder.set(CaptureRequest.TONEMAP_GAMMA, 2.4f)
+            }
+        }
         
         if (iso != null || exposure != null) {
             builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
