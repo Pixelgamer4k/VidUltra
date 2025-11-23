@@ -57,6 +57,7 @@ class FocusPeakingRenderer(
         triangleVertices.put(triangleVerticesData).position(0)
 
         Matrix.setIdentityM(mSTMatrix, 0)
+        Matrix.setIdentityM(mMVPMatrix, 0)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {

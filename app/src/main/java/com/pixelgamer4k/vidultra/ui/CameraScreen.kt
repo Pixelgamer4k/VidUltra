@@ -133,8 +133,7 @@ fun ExactPremiumOverlay(
         // --- LEFT SIDE STACK ---
         Column(
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(top = 100.dp), // Push down below histogram
+                .align(Alignment.CenterStart),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             LargeInfoBadge(
