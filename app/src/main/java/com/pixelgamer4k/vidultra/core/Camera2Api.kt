@@ -46,7 +46,7 @@ class Camera2Api(private val context: Context) {
     
     // Video Encoder
     private var videoEncoder: VideoEncoder? = null
-    private var currentColorProfile: ColorProfile = ColorProfiles.getById(3)
+    private var currentColorProfile: ColorProfile = ColorProfiles.getById(5) // REC2020 default
     
     // Manual Settings
     var iso: Int? = null
@@ -324,7 +324,7 @@ class Camera2Api(private val context: Context) {
     fun setAuto() { iso = null; exposure = null; focus = null; applySettings(); updatePreview() }
 
     // Color Profile Management
-    private var toneMapMode = 3 // Default to GAMMA (FreeDcam style)
+    private var toneMapMode = 5 // Default to REC2020
 
     fun setToneMapMode(mode: Int) {
         toneMapMode = mode

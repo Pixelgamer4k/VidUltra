@@ -54,7 +54,6 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
     val cameraState = cameraViewModel.state.collectAsState().value
     val bitDepth = cameraViewModel.bitDepth.collectAsState().value
     val supports10Bit = cameraViewModel.supports10Bit.collectAsState().value
-    val toneMapMode = cameraViewModel.toneMapMode.collectAsState().value
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (permissionState.allPermissionsGranted) {
@@ -77,13 +76,11 @@ fun CameraScreen(cameraViewModel: CameraViewModel = viewModel()) {
                 isRecording = cameraState is Camera2Api.CameraState.Recording,
                 bitDepth = bitDepth,
                 supports10Bit = supports10Bit,
-                toneMapMode = toneMapMode,
                 onRecord = { if (it) cameraViewModel.stopRecording() else cameraViewModel.startRecording() },
                 onIsoChange = { cameraViewModel.setIso(it.toInt()) },
                 onShutterChange = { cameraViewModel.setExposure(it.toLong()) },
                 onFocusChange = { cameraViewModel.setFocus(it) },
-                onBitDepthChange = { cameraViewModel.setBitDepth(it) },
-                onCycleToneMap = { cameraViewModel.cycleToneMapMode() }
+                onBitDepthChange = { cameraViewModel.setBitDepth(it) }
             )
         } else {
             LaunchedEffect(Unit) { permissionState.launchMultiplePermissionRequest() }
@@ -97,13 +94,11 @@ fun SupremeOverlay(
     isRecording: Boolean,
     bitDepth: Int,
     supports10Bit: Boolean,
-    toneMapMode: Int,
     onRecord: (Boolean) -> Unit,
     onIsoChange: (Float) -> Unit,
     onShutterChange: (Float) -> Unit,
     onFocusChange: (Float) -> Unit,
-    onBitDepthChange: (Int) -> Unit,
-    onCycleToneMap: () -> Unit
+    onBitDepthChange: (Int) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var activeControl by remember { mutableStateOf<String?>(null) }
@@ -206,29 +201,18 @@ fun SupremeOverlay(
 
 
             
-            // TONE Mapping Selector
-            val toneModeName = when (toneMapMode) {
-                0 -> "FAST"
-                1 -> "HQ"
-                2 -> "FLAT"
-                3 -> "GAMMA"
-                4 -> "REC709"
-                5 -> "REC2020"
-                else -> "UNK"
-            }
-            
+            // LOG Placeholder (for future log profile implementation)
             Row(
                 modifier = Modifier
                     .width(140.dp)
                     .height(32.dp)
                     .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                    .clickable { onCycleToneMap() }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("TONE", fontSize = 9.sp, color = Color.White.copy(0.6f))
-                Text(toneModeName, fontSize = 13.sp, color = Gold, fontWeight = FontWeight.Bold)
+                Text("LOG", fontSize = 9.sp, color = Color.White.copy(0.6f))
+                Text("REC2020", fontSize = 13.sp, color = Gold, fontWeight = FontWeight.Bold)
             }
         }
 

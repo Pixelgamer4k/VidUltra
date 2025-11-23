@@ -50,7 +50,7 @@ class CameraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // Tone Mapping State
-    private val _toneMapMode = MutableStateFlow(3) // Default GAMMA
+    private val _toneMapMode = MutableStateFlow(5) // Default REC2020
     val toneMapMode: StateFlow<Int> = _toneMapMode.asStateFlow()
     
     fun cycleToneMapMode() {
