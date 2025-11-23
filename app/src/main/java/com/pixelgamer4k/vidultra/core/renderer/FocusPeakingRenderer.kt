@@ -136,8 +136,8 @@ class FocusPeakingRenderer(
         // 1. Scale to correct aspect ratio
         Matrix.scaleM(mMVPMatrix, 0, scaleX, scaleY, 1f)
         
-        // 2. Rotate to match orientation
-        Matrix.rotateM(mMVPMatrix, 0, -90f, 0f, 0f, 1f)
+        // 2. Rotate to match orientation (90 degrees for Portrait)
+        Matrix.rotateM(mMVPMatrix, 0, 90f, 0f, 0f, 1f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
