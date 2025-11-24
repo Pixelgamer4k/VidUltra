@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, StyleSheet, Dimensions, Text } from 'react-native';
 import { Camera, useCameraDevice, useCameraFormat } from 'react-native-vision-camera';
 import { GestureHandlerRootView, TapGestureHandler } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -30,6 +30,7 @@ const { width, height } = Dimensions.get('window');
 
 export function MainScreen() {
     const device = useCameraDevice('back');
+    const [hasPermission, setHasPermission] = useState(false);
     const {
         selectedResolution,
         showGrid,
@@ -43,6 +44,19 @@ export function MainScreen() {
 
     const camera = useRef<Camera>(null);
     const [focusPos, setFocusPos] = useState({ x: 0, y: 0, visible: false });
+
+    // Request camera permission
+    useEffect(() => {
+        (async () => {
+            const status = await Camera.getCameraPermissionStatus();
+            if (status === 'granted') {
+                setHasPermission(true);
+            } else {
+                const newStatus = await Camera.requestCameraPermission();
+                setHasPermission(newStatus === 'granted');
+            }
+        })();
+    }, []);
 
     const format = useCameraFormat(device, [
         { videoResolution: selectedResolution },
@@ -76,7 +90,17 @@ export function MainScreen() {
         camera.current?.focus({ x, y });
     };
 
-    if (!device) return <View style={styles.blackScreen} />;
+    if (!hasPermission) return (
+        <View style={styles.blackScreen}>
+            <Text style={{ color: 'white', fontSize: 18 }}>Requesting camera permission...</Text>
+        </View>
+    );
+
+    if (!device) return (
+        <View style={styles.blackScreen}>
+            <Text style={{ color: 'white', fontSize: 18 }}>Loading camera...</Text>
+        </View>
+    );
 
     return (
         <GestureHandlerRootView style={styles.container}>

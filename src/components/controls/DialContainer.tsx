@@ -7,7 +7,8 @@ import Animated, {
     withDecay,
     runOnJS,
     interpolate,
-    Extrapolate
+    Extrapolate,
+    useDerivedValue
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
@@ -39,27 +40,32 @@ export function DialContainer() {
         .onEnd((event) => {
             translateX.value = withDecay({
                 velocity: event.velocityX,
-                clamp: [-10000, 10000], // Adjust based on range
+                clamp: [-10000, 10000],
             });
         });
 
-    // Haptics logic
-    useAnimatedStyle(() => {
+    // Haptics logic using useDerivedValue instead of useAnimatedStyle
+    useDerivedValue(() => {
         const index = Math.round(-translateX.value / TICK_SPACING);
         if (index !== activeIndex.value) {
             activeIndex.value = index;
             runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
 
             // Update store values based on index
-            // This is a simplified mapping. Real implementation needs specific ranges for ISO/Shutter
             if (activeControl === 'iso') {
                 const isoValues = [100, 200, 400, 800, 1600, 3200, 6400];
-                const mappedIndex = Math.max(0, Math.min(isoValues.length - 1, index + 3)); // Offset center
+                const mappedIndex = Math.max(0, Math.min(isoValues.length - 1, index + 3));
                 runOnJS(setIso)(isoValues[mappedIndex]);
+            } else if (activeControl === 'shutter') {
+                const shutterValues = [1 / 24, 1 / 30, 1 / 50, 1 / 60, 1 / 120, 1 / 240, 1 / 480];
+                const mappedIndex = Math.max(0, Math.min(shutterValues.length - 1, index + 3));
+                runOnJS(setShutter)(shutterValues[mappedIndex]);
+            } else if (activeControl === 'focus') {
+                const focusValue = Math.max(0, Math.min(1, (index + 25) / 50));
+                runOnJS(setFocus)(focusValue);
             }
         }
-        return {};
-    });
+    }, [activeControl]);
 
     if (!activeControl) return null;
 
@@ -76,7 +82,7 @@ export function DialContainer() {
             <GestureDetector gesture={pan}>
                 <Animated.View style={styles.track}>
                     {Array.from({ length: 50 }).map((_, i) => {
-                        const index = i - 25; // Center around 0
+                        const index = i - 25;
 
                         const rStyle = useAnimatedStyle(() => {
                             const position = (index * TICK_SPACING) + translateX.value;
@@ -110,8 +116,9 @@ export function DialContainer() {
                                 <View style={styles.tick} />
                                 {i % 5 === 0 && (
                                     <Animated.Text style={styles.tickLabel}>
-                                        {/* Mock values */}
-                                        {activeControl === 'shutter' ? `1/${(i + 1) * 10}` : (i + 1) * 100}
+                                        {activeControl === 'shutter' ? `1/${Math.round(1 / (0.001 + (i + 1) * 0.001))}` :
+                                            activeControl === 'focus' ? `${(i / 50).toFixed(2)}` :
+                                                (i + 1) * 100}
                                     </Animated.Text>
                                 )}
                             </Animated.View>
@@ -129,7 +136,7 @@ export function DialContainer() {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 140, // Above dock
+        bottom: 140,
         width: '100%',
         height: 100,
         justifyContent: 'center',

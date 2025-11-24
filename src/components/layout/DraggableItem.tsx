@@ -57,8 +57,8 @@ export function DraggableItem({ id, children, defaultPosition = { x: 0, y: 0 } }
     }));
 
     return (
-        <Animated.View style={animatedStyle}>
-            <View style={[styles.content, isEditMode && styles.editingContent]}>
+        <Animated.View style={animatedStyle} pointerEvents="box-none">
+            <View style={[styles.content, isEditMode && styles.editingContent]} pointerEvents="auto">
                 {children}
 
                 {isEditMode && (
