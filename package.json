@@ -1,0 +1,27 @@
+{
+  "name": "temp-rn",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "~54.0.25",
+    "expo-status-bar": "~3.0.8",
+    "lucide-react-native": "^0.554.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "^2.29.1",
+    "react-native-reanimated": "^4.1.5",
+    "react-native-vision-camera": "^4.7.3",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
