@@ -24,7 +24,6 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 
 /**
  * Camera2 controller handling preview, manual controls, and recording.
@@ -517,8 +516,8 @@ class CameraController(private val context: Context) {
                 138.5177312231f * kotlin.math.ln(temperature - 10) - 305.0447927307f
             }
         } else {
-            red = 329.698727446f * kotlin.math.pow(temperature - 60, -0.1332047592f)
-            green = 288.1221695283f * kotlin.math.pow(temperature - 60, -0.0755148492f)
+            red = (329.698727446 * Math.pow((temperature - 60).toDouble(), -0.1332047592)).toFloat()
+            green = (288.1221695283 * Math.pow((temperature - 60).toDouble(), -0.0755148492)).toFloat()
             blue = 255f
         }
 
