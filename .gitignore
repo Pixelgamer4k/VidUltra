@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Local configuration
+local.properties
+secrets.properties
+
+# Android Studio / IDEA
+*.iml
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS files
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# APK artifacts
+*.apk
+*.aab
+output.json

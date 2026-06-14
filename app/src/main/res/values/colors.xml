@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
+    <color name="overlay_dark">#CC000000</color>
+    <color name="overlay_light">#33000000</color>
+    <color name="accent_red">#FF3B30</color>
+    <color name="accent_green">#34C759</color>
+    <color name="accent_yellow">#FFCC00</color>
+    <color name="accent_cyan">#00C7BE</color>
+    <color name="accent_orange">#FF9500</color>
+    <color name="control_bg">#26000000</color>
+    <color name="control_stroke">#4DFFFFFF</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="histogram_red">#FF3B30</color>
+    <color name="histogram_green">#34C759</color>
+    <color name="histogram_blue">#007AFF</color>
+    <color name="histogram_luma">#FFFFFF</color>
+</resources>

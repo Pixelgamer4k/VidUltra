@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VidUltra Pro</string>
+    <string name="record">Record</string>
+    <string name="stop">Stop</string>
+    <string name="iso">ISO</string>
+    <string name="shutter">Shutter</string>
+    <string name="focus">Focus</string>
+    <string name="wb">WB</string>
+    <string name="exposure">EV</string>
+    <string name="lens">Lens</string>
+    <string name="log_profile">Log</string>
+    <string name="hdr">HDR</string>
+    <string name="tenbit">10-bit</string>
+    <string name="bitrate">Bitrate</string>
+    <string name="stabilization">Stab</string>
+    <string name="histogram">Histogram</string>
+    <string name="focus_bracket">Focus Bracket</string>
+    <string name="noise_reduction">NR</string>
+    <string name="sharpening">Sharp</string>
+    <string name="auto">AUTO</string>
+    <string name="manual">MAN</string>
+    <string name="fps">FPS</string>
+    <string name="resolution">Res</string>
+    <string name="audio">Audio</string>
+    <string name="grid">Grid</string>
+    <string name="zebra">Zebra</string>
+    <string name="peaking">Peaking</string>
+    <string name="settings">Settings</string>
+</resources>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.VidUltra" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:background">@color/black</item>
+    </style>
+
+    <style name="Theme.VidUltra.Splash" parent="Theme.VidUltra">
+        <item name="android:windowBackground">@color/black</item>
+    </style>
+
+    <style name="ControlButton" parent="android:Widget.Material.Button.Borderless">
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:background">@drawable/bg_control_button</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
+    <style name="ValueText" parent="android:Widget.Material.TextView">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:shadowColor">@color/black</item>
+        <item name="android:shadowRadius">4</item>
+    </style>
+
+    <style name="LabelText" parent="ValueText">
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+</resources>
