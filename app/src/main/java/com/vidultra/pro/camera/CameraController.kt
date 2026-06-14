@@ -24,6 +24,7 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 /**
  * Camera2 controller handling preview, manual controls, and recording.
@@ -264,10 +265,10 @@ class CameraController(private val context: Context) {
         builder.set(CaptureRequest.CONTROL_AWB_MODE, awbMode)
 
         if (currentSettings.isoMode == ControlMode.MANUAL) {
-            builder.set(CaptureRequest.SENSOR_SENSITIVITY, currentSettings.isoValue.coerceIn(isoRange))
+            builder.set(CaptureRequest.SENSOR_SENSITIVITY, currentSettings.isoValue.coerceIn(isoRange.lower, isoRange.upper))
         }
         if (currentSettings.shutterMode == ControlMode.MANUAL) {
-            val exposure = currentSettings.effectiveShutterNs().coerceIn(exposureRange)
+            val exposure = currentSettings.effectiveShutterNs().coerceIn(exposureRange.lower, exposureRange.upper)
             builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposure)
         }
         if (currentSettings.focusMode == ControlMode.MANUAL) {
