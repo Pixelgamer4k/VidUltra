@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = 'dev.vidultra.proto'
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = 'dev.vidultra.proto'
+        minSdk = 33
+        targetSdk = 35
+        versionCode = 1
+        versionName = '0.1.0-beta'
+    }
+
+    // Builds to share are signed as Pixelgamer4k: gradle assembleRelease -Pvidultra.signing=<signing.properties>
+    // (the key lives outside the project). Without it, release builds stay debug-signed for the test phone.
+    signingConfigs {
+        if (project.hasProperty('vidultra.signing')) {
+            pixel {
+                def p = new Properties()
+                file(project.property('vidultra.signing')).withInputStream { p.load(it) }
+                storeFile = file(p.storeFile)
+                storePassword = p.storePassword
+                keyAlias = p.keyAlias
+                keyPassword = p.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+            signingConfig = project.hasProperty('vidultra.signing') ? signingConfigs.pixel : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}

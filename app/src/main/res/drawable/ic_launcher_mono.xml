@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- themed (Material You) icon: the beam and prism as a single-colour silhouette -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" android:strokeLineCap="round"
+        android:pathData="M24,48 L50,57" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M54,47 L61,62 L47,62 Z" />
+    <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.85"
+        android:pathData="M58,55 C66,52 70,44 78,46 C84,48 84,56 79,60 C74,64 78,70 84,72 L84,76 C74,76 68,68 72,62 C76,56 72,52 66,56 C63,58 61,58 58,57 Z" />
+</vector>
