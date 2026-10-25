@@ -8,8 +8,9 @@ with gyro stabilization, film-like noise reduction, an iPhone-style auto look an
 
 <p align="center"><img src="docs/screenshots/viewfinder.jpg" alt="Viewfinder"></p>
 
-> **Beta.** Developed and tuned on one phone so far. It is built to adapt to any phone with a RAW-capable
-> camera, but expect rough edges on others — please report them (see [Reporting a problem](#reporting-a-problem)).
+> **Beta. Snapdragon 8 Gen 2 or equivalent required.** VidUltra works only on phones with a Snapdragon chip —
+> MediaTek and Exynos phones are not supported because of hardware limitations. See [Requirements](#requirements).
+> Expect rough edges and please report them (see [Reporting a problem](#reporting-a-problem)).
 
 ## Why
 
@@ -54,9 +55,13 @@ or a flat log image ready for grading.
 
 ## Requirements
 
+- **Snapdragon 8 Gen 2 or equivalent (or newer).** Every frame is developed from RAW on the GPU, which needs
+  flagship-class graphics; on older or mid-range chips recording drops well below the chosen frame rate.
+- **Snapdragon only.** Phones with MediaTek or Exynos chips are not supported — they have hardware limitations
+  and VidUltra will not work on them.
 - Android 13 or newer.
-- A camera that offers RAW capture to apps (Camera2 `RAW` capability). Most recent mid-range and flagship phones do.
-- OpenGL ES 3.2. A 10-bit HEVC encoder is used when the phone has one, otherwise H.264 8-bit.
+- A camera that offers RAW capture to apps (Camera2 `RAW` capability).
+- A 10-bit HEVC encoder is used when the phone has one, otherwise H.264 8-bit.
 
 The app checks all of this at start and only offers the resolutions, frame rates and codecs your phone can actually record.
 
